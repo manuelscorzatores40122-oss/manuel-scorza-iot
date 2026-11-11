@@ -28,8 +28,18 @@ bool nubeConfigurada() {
 // ===================================
 // CONFIGURACION
 // ===================================
-const char* WIFI_NOMBRE   = "Ls";
-const char* WIFI_CLAVE    = "123456789";
+struct RedWiFi {
+  const char* nombre;
+  const char* clave;
+};
+const RedWiFi REDES_WIFI[] = {
+  {"Ls", "123456789"},
+  {"COMPUTO_2.4GHz", "escorcino2025"},
+  {"RT_5B", "123456789"},
+  {"MinEdu-5GHz", "1234567890"},
+  {"MinEdu-2.4GHz", "1234567890"},
+};
+const size_t CANTIDAD_REDES_WIFI = sizeof(REDES_WIFI) / sizeof(REDES_WIFI[0]);
 const char* HOSTNAME      = "luces";   // accesible en http://luces.local
 const char* ZONA_HORARIA  = "PET5";    // Peru (UTC-5, sin horario de verano)
 
@@ -39,7 +49,7 @@ const uint32_t SESION_MS = 12UL * 60 * 60 * 1000;
 String tokenSesion;
 uint32_t inicioSesion = 0;
 
-const uint8_t  PIN_RELE              = 23;
+const uint8_t  PIN_RELE              = 15;
 // Ajustar al módulo: true = activa con LOW; false = activa con HIGH.
 const bool     RELE_ACTIVO_BAJO      = true;
 const uint8_t  RELE_NIVEL_ACTIVO     = RELE_ACTIVO_BAJO ? LOW : HIGH;
@@ -82,6 +92,7 @@ bool     releEncendido     = false;
 uint32_t inicioEncendido  = 0;
 uint32_t ultimaRevision   = 0;
 uint32_t ultimoIntentoWiFi = 0;
+size_t siguienteRedWiFi = 0;
 uint32_t ultimoDia        = 0;     // AAAAMMDD del ultimo disparo
 bool     mdnsIniciado     = false;
 bool     wifiAnterior     = false;
@@ -234,16 +245,26 @@ void revisarHorario() {
 // ===================================
 // WIFI (no bloqueante tras el arranque)
 // ===================================
+void intentarSiguienteRedWiFi() {
+  const RedWiFi& red = REDES_WIFI[siguienteRedWiFi];
+  siguienteRedWiFi = (siguienteRedWiFi + 1) % CANTIDAD_REDES_WIFI;
+  WiFi.disconnect();
+  Serial.printf("Conectando a WiFi: %s\n", red.nombre);
+  WiFi.begin(red.nombre, red.clave);
+  ultimoIntentoWiFi = millis();
+}
+
 void mantenerWiFi() {
   bool conectado = WiFi.status() == WL_CONNECTED;
 
   if (conectado != wifiAnterior) {
     wifiAnterior = conectado;
     if (conectado) {
-      Serial.print("WiFi conectado. IP: ");
+      Serial.printf("WiFi conectado a %s. IP: ", WiFi.SSID().c_str());
       Serial.println(WiFi.localIP());
     } else {
       Serial.println("WiFi desconectado");
+      if (mdnsIniciado) MDNS.end();
       mdnsIniciado = false;
     }
   }
@@ -255,10 +276,7 @@ void mantenerWiFi() {
       Serial.printf("Disponible en http://%s.local\n", HOSTNAME);
     }
   } else if (millis() - ultimoIntentoWiFi >= INTERVALO_RECONEXION) {
-    ultimoIntentoWiFi = millis();
-    Serial.println("Reintentando WiFi...");
-    WiFi.disconnect();
-    WiFi.begin(WIFI_NOMBRE, WIFI_CLAVE);
+    intentarSiguienteRedWiFi();
   }
 }
 
@@ -565,10 +583,11 @@ void tareaNube(void*) {
         xQueuePeek(colaEstado, &estado, 0) == pdTRUE) {
       WiFiClientSecure cliente;
       cliente.setCACert(CLOUD_ROOT_CA);
-      cliente.setHandshakeTimeout(5);
+      cliente.setHandshakeTimeout(10);
       HTTPClient http;
-      http.setConnectTimeout(4000);
-      http.setTimeout(5000);
+      http.setConnectTimeout(10000);
+      // Redis puede tardar hasta 7 s; dejar margen para la respuesta de Vercel.
+      http.setTimeout(10000);
       String url = String(TIMBRE_CLOUD_URL) + "/api/sync";
       if (url.startsWith("https://") && http.begin(cliente, url)) {
         http.addHeader("Authorization", String("Bearer ") + TIMBRE_DEVICE_TOKEN);
@@ -580,6 +599,14 @@ void tareaNube(void*) {
           if (parseHorarioEscolar(respuesta.c_str(), cambio)) {
             xQueueOverwrite(colaNube, &cambio);
           } else Serial.println("Respuesta de nube invalida");
+        } else if (codigo < 0) {
+          Serial.printf("Fallo de conexion a nube (%d): %s. WiFi: %s, RSSI: %ld dBm\n",
+            codigo, HTTPClient::errorToString(codigo).c_str(),
+            WiFi.status() == WL_CONNECTED ? "conectado" : "desconectado",
+            (long)WiFi.RSSI());
+          char detalleTLS[160] = {};
+          int errorTLS = cliente.lastError(detalleTLS, sizeof(detalleTLS));
+          if (errorTLS) Serial.printf("Error TLS (%d): %s\n", errorTLS, detalleTLS);
         } else Serial.printf("Nube no disponible (HTTP %d)\n", codigo);
         http.end();
       }
@@ -650,14 +677,16 @@ void setup() {
   // WiFi
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(HOSTNAME);
-  WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_NOMBRE, WIFI_CLAVE);
+  // Los reintentos se gestionan aqui para alternar entre todas las redes.
+  WiFi.setAutoReconnect(false);
+  intentarSiguienteRedWiFi();
 
   Serial.print("Conectando al WiFi");
   uint32_t inicio = millis();
   while (WiFi.status() != WL_CONNECTED &&
          millis() - inicio < TIMEOUT_WIFI_INICIAL) {
     delay(500);
+    mantenerWiFi();
     Serial.print(".");
   }
   Serial.println();

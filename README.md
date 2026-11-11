@@ -38,7 +38,9 @@ Copiar `cloud_config.example.h` a `cloud_config.h` y completar:
 #define TIMBRE_DEVICE_TOKEN "mismo-token-de-DEVICE_TOKEN"
 ```
 
-`cloud_config.h` está ignorado por Git. Si no existe o la URL está vacía, la placa conserva el funcionamiento local original. Configurar también `WIFI_NOMBRE` y `WIFI_CLAVE` en el sketch. Utilizar Wi-Fi 2.4 GHz.
+`cloud_config.h` está ignorado por Git. Si no existe o la URL está vacía, la placa conserva el funcionamiento local original. Configurar las parejas de nombre y contraseña en `REDES_WIFI` en el sketch. Utilizar Wi-Fi 2.4 GHz.
+
+La placa intenta las redes en el orden de la lista, empezando por `Ls`. Si no conecta en 10 segundos, pasa a la siguiente y vuelve al principio al terminar la lista. Una vez conectada, conserva esa red; si pierde la conexión, reanuda los intentos. Los reintentos no incluyen esperas que bloqueen el temporizador del timbre. El monitor serie a 115200 baudios muestra la red que intenta y la red a la que se conectó. Para aplicar cambios a la lista hay que compilar y cargar el firmware en la placa.
 
 El proyecto compila con Arduino ESP32 **3.3.12**, placa `esp32:esp32:esp32`, sin librerías externas. La red HTTPS corre en otra tarea para que una conexión lenta no bloquee el temporizador ni el apagado. Las colas transfieren copias del estado entre las tareas; la configuración y el GPIO se modifican únicamente en el loop principal.
 
@@ -53,8 +55,8 @@ El ESP32 necesita sincronizar la hora por NTP antes de conectarse por HTTPS. `cl
 
 ### Salida para módulo de relé
 
-El firmware controla el relé desde **GPIO 23** (`PIN_RELE`). La configuración
-inicial es `RELE_ACTIVO_BAJO = true`: LOW activa y HIGH desactiva. Si el módulo
+El firmware controla el relé desde **GPIO 26 (D26)** (`PIN_RELE`). La configuración
+actual es `RELE_ACTIVO_BAJO = true`: LOW activa y HIGH desactiva. Si el módulo
 se activa con HIGH, cambiar esa constante a `false` antes de compilar.
 Los horarios, el control manual y el apagado por duración usan esta polaridad.
 Al iniciar el programa se configura la salida en el nivel inactivo.
@@ -67,10 +69,22 @@ ajustar esas constantes si el LED de la placa utiliza otro pin o polaridad.
 Para aplicar este cambio hay que compilar y cargar el firmware en el ESP32.
 
 Usar un módulo con entrada compatible con lógica de 3.3 V; no conectar una
-bobina de relé directamente al GPIO. Conectar IN a GPIO 23 y alimentar el
+bobina de relé directamente al GPIO. Conectar IN a GPIO 26 (D26) y alimentar el
 módulo según su ficha técnica; en módulos sin aislamiento, compartir GND con
 el ESP32. La alimentación VCC depende del módulo, no de la polaridad de IN.
 Usar COM y NO cuando se necesite que el circuito quede abierto en reposo.
+
+Conexión para un módulo que admita alimentación de 3.3 V y cuya corriente
+pueda suministrar la salida 3V3 de la placa:
+
+| Módulo relé | ESP32 DevKit |
+| --- | --- |
+| VCC | 3V3 |
+| GND | GND |
+| IN | GPIO 26 (D26) |
+
+Si el módulo requiere 5 V, no alimentarlo desde 3V3: usar la alimentación
+indicada por el fabricante, manteniendo la entrada IN compatible con 3.3 V.
 
 Antes de conectar la carga, verificar activación, parada, apagado por duración
 y reinicio. El firmware no controla el pin durante todo el arranque/reset:
@@ -112,3 +126,21 @@ La prueba `protocol.test.js` requiere `g++` y comprueba que el parser C++ usado 
 Las pruebas del servicio usan almacenamiento simulado y verifican autenticación, caducidad, límites de login, validación, sincronización, reintentos y vencimiento de órdenes. No sustituyen la prueba de extremo a extremo con Redis real y la placa.
 
 Referencias: [Funciones Node de Vercel](https://vercel.com/docs/functions/runtimes/node-js), [Redis en Vercel](https://vercel.com/docs/redis), [API REST de Upstash](https://upstash.com/docs/redis/features/restapi).
+
+## Soporte e instalación de la app
+
+En **Dispositivo** se muestran las tarjetas de instalación y soporte. Completar
+`web/public/support-config.js` con el nombre público del desarrollador y su
+WhatsApp internacional (solo dígitos, incluido el código de país). El botón abre
+una conversación con un mensaje sobre actualizaciones o mantenimiento; el usuario
+elige si lo envía. Mientras no haya un número válido, el enlace queda deshabilitado.
+
+El manifiesto `web/public/manifest.webmanifest` y los iconos de `public/icons/`
+permiten instalar la app desde navegadores compatibles, al servirla por HTTPS
+(o localhost). El botón usa la invitación de instalación cuando el navegador la
+ofrece; en los demás casos muestra instrucciones, incluidas las de Safari en iOS.
+La app instalada requiere internet para acceder al servicio; no almacena horarios,
+sesiones ni respuestas de la API para uso sin conexión. Los horarios confirmados
+siguen ejecutándose en la placa según las condiciones descritas anteriormente.
+
+Pruebas del contacto y del flujo de instalación: `node --test web/test/install.test.js`.

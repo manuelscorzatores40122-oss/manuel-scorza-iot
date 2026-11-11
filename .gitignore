@@ -4,3 +4,4 @@ node_modules/
 .env.*
 !.env.example
 cloud_config.h
+borrardor.txt
