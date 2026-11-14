@@ -1,4 +1,10 @@
+import { createRoot } from 'react-dom/client';
+import { createElement } from 'react';
+import { DayTimeline } from './DayTimeline.jsx';
+import { AlarmList } from './AlarmList.jsx';
 const $ = id => document.getElementById(id);
+const listaRoot = createRoot($('lista'));
+const timelineRoot = createRoot($('dayTimeline'));
 const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], ORDEN = [1,2,3,4,5,6,0];
 let datos = null, autenticado = false, ocupado = false, filtro = -1, editId = null, editBase = null, generacion = 0;
 let avisoGuardado = null;
@@ -21,6 +27,7 @@ function mostrarError(error, aviso = 'alerta', campo = null) {
 }
 function mostrarLogin(mensaje = '', tipo = 'info') {
  generacion++; autenticado=false; datos=null; avisoGuardado=null;
+ timelineRoot.render(null);
  $('app').hidden=true; $('login').hidden=false; $('conexion').hidden=true;
  $('confirmacion').close(); $('editor').close(); $('clave').value='';
  limpiarError('loginForm', 'loginError');
@@ -46,27 +53,16 @@ async function pedir(url, body) {
   return await r.json();
  }catch(e){if(e.name==='AbortError'||e instanceof TypeError)throw new Error('No se pudo conectar. Vuelve a intentar.');throw e;}finally{clearTimeout(timer);}
 }
-function element(tag, className, text) { const e=document.createElement(tag);e.className=className;if(text!==undefined)e.textContent=text;return e; }
 function renderLista() {
  const all=datos?.alarmas||[], list=all.filter(a=>filtro<0||(a.dias&(1<<filtro))).sort((a,b)=>a.hora.localeCompare(b.hora));
  $('contador').textContent=`${all.length} de 32 horarios · ${all.filter(a=>a.activa).length} activos`;
- $('lista').replaceChildren();
- for(const a of list){
-  const row=element('article','alarm'+(a.activa?'':' off'));
-  const time=element('button','clock-time'), content=element('div','alarm-content');
-  time.append(element('span','time-digits',a.hora),element('span','alarm-caption',`${a.nombre} · ${a.duracion} s${a.activa?'':' · Desactivado'}`));
-  time.dataset.edit=a.id;time.setAttribute('aria-label',`Editar ${a.nombre}, ${a.hora}`);time.disabled=ocupado;
-  const week=element('div','week');for(const d of [0,1,2,3,4,5,6]){const day=element('span',a.dias&(1<<d)?'selected':'',['D','L','M','X','J','V','S'][d]);day.setAttribute('aria-label',`${DIAS[d]}: ${a.dias&(1<<d)?'activo':'inactivo'}`);week.append(day);}content.append(week);
-  const actions=element('div','row-actions'), label=element('label','switch'), toggle=document.createElement('input');
-  toggle.type='checkbox';toggle.checked=a.activa;toggle.dataset.toggle=a.id;toggle.disabled=ocupado;toggle.setAttribute('aria-label',`Activar ${a.nombre}`);
-  label.append(toggle,element('span','track'));actions.append(label);
-  row.append(time,content,actions);$('lista').append(row);
- }
+ listaRoot.render(createElement(AlarmList, { alarmas: list, ocupado, onEdit: editar, onToggle: alternar }));
  $('vacio').hidden=!!list.length;$('vacioTitulo').textContent=all.length?'Sin timbres para este día':'Tu jornada empieza aquí';
  $('vacioTexto').textContent=all.length?'Agrega un horario o selecciona otro día de la semana.':'Agrega los timbres de entrada, recreo y salida.';
  document.querySelectorAll('[data-filtro]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.filtro)===filtro)));
 }
 function pintar(d) {
+ timelineRoot.render(createElement(DayTimeline, { alarmas: d.alarmas, serverTime: d.ahora, pending: d.pendiente || !d.online || d.requiereActualizacion }));
  datos=d;autenticado=true;$('estadoBreve').textContent=d.online?(d.encendido?'Sonando':'En línea'):'Sin conexión';$('estadoBreve').classList.toggle('offline',!d.online);$('login').hidden=true;$('app').hidden=false;$('conexion').hidden=true;
  $('estado').textContent=!d.online?'Timbre sin conexión':d.encendido?`Sonando · ${d.restante} s restantes`:'Timbre conectado';
  $('punto').classList.toggle('on',d.online);$('actualizacion').hidden=!d.requiereActualizacion;
@@ -98,7 +94,7 @@ function controles() {
  $('nuevo').disabled=ocupado||(datos?.alarmas.length>=32);
  $('nuevoVacio').disabled=$('nuevo').disabled;
  for (const id of ['probar','detener']) $(id).disabled=ocupado||!datos?.online;
- document.querySelectorAll('[data-edit],[data-toggle],[data-remove]').forEach(e=>e.disabled=ocupado);
+ renderLista();
  $('alarmForm').setAttribute('aria-busy',String(ocupado));
  $('guardar').textContent=ocupado?'Guardando…':'Guardar horario';
  $('confirmarEliminar').textContent=ocupado?'Eliminando…':'Eliminar horario';
@@ -178,7 +174,6 @@ $('alarmForm').onsubmit=async e=>{
  const list=editId?editBase.alarmas.map(x=>x.id===editId?a:x):[...editBase.alarmas,a];
  try{await guardarLista(list,editBase);$('editor').close();}catch(e){mostrarError(e,'editorError');}
 };
-$('lista').onclick=e=>{const edit=e.target.closest('[data-edit]');if(edit)editar(edit.dataset.edit);};
 $('eliminarEditor').onclick=()=>{
  if(ocupado||!editId||!editBase)return;
  const a=editBase.alarmas.find(a=>a.id===editId);
@@ -194,7 +189,11 @@ $('confirmarEliminar').onclick=async()=>{
  try{await guardarLista(editBase.alarmas.filter(x=>x.id!==editId),editBase,'Horario eliminado.');$('confirmacion').close();$('editor').close();}
  catch(e){mostrarError(e,'confirmacionError');}
 };
-$('lista').onchange=async e=>{if(!e.target.dataset.toggle||ocupado)return;const id=e.target.dataset.toggle,checked=e.target.checked;try{await guardarLista(datos.alarmas.map(a=>a.id===id?{...a,activa:checked}:a),datos,checked?'Horario activado.':'Horario desactivado.');}catch(e){mostrarError(e);renderLista();}};
+async function alternar(id, checked) {
+ if (ocupado) return;
+ try { await guardarLista(datos.alarmas.map(a=>a.id===id?{...a,activa:checked}:a),datos,checked?'Horario activado.':'Horario desactivado.'); }
+ catch(e) { mostrarError(e); renderLista(); }
+}
 async function manual(url){if(ocupado)return;ocupado=true;generacion++;avisoGuardado=null;escribirAviso('alerta','');escribirAviso('mensaje','');controles();try{pintar(await pedir(url,{}));escribirAviso('mensaje',url==='/encender'?'Prueba solicitada. Esperando a la placa…':'Apagado solicitado. Esperando a la placa…');}catch(e){mostrarError(e);}finally{ocupado=false;controles();}}
 document.querySelectorAll('[data-panel]').forEach(button=>button.onclick=()=>{
  document.querySelector('.next').hidden=button.dataset.panel!=='panelAlarmas';

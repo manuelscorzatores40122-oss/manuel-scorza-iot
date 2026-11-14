@@ -1,16 +1,33 @@
 {
   "id": "/",
   "name": "Manuel Scorza · Timbre escolar",
-  "short_name": "Timbre escolar",
+  "short_name": "Manuel Scorza",
   "description": "Horarios y control del timbre escolar de la I. E. 40122 Manuel Scorza.",
   "lang": "es-PE",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#111111",
+  "background_color": "#172d46",
+  "theme_color": "#172d46",
   "icons": [
-    {"src": "/icons/timbre-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "/icons/timbre-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
-  ]
+    {
+      "src": "/icons/colegio-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/colegio-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/colegio-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "prefer_related_applications": false
 }
