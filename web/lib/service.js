@@ -79,7 +79,10 @@ export function createService(db = redis, env = process.env, clock = () => Math.
       proxima: online && t.revision === c?.revision ? t.proxima : 0,
       pendiente: !!c && (t?.revision !== c.revision || (Array.isArray(c.alarmas) && t?.proto !== 2)),
       ordenPendiente: !!cmd && cmd.expires > ahora && t?.ack !== cmd.id,
-      ultimaConexion: t?.seen || 0
+      orden: cmd ? { id: cmd.id, vence: cmd.expires } : null,
+      ultimoComando: t?.ack || '-',
+      ultimaConexion: t?.seen || 0,
+      ultimaActivacion: t?.evento ? { id: t.evento, hora: t.eventoHora } : null
     };
   }
   return {
@@ -115,9 +118,18 @@ export function createService(db = redis, env = process.env, clock = () => Math.
       }
       return state();
     },
-    async command(action) {
+    async command(action, body = {}) {
+      const duration = body.duracion === undefined ? undefined : Number(body.duracion);
+      if (action === 1 && duration !== undefined && (!Number.isInteger(duration) || duration < 1 || duration > 3600)) throw new HttpError(400, 'Escribe una duración de 1 a 3600 segundos, sin decimales.');
       const status = await state();
       if (!status.online) throw new HttpError(409, 'El ESP32 está desconectado. No se envió la orden.');
+      if (action === 1 && duration !== undefined && duration !== status.duracion) {
+        if (status.firmwareVersion !== 2) throw new HttpError(409, 'Actualiza la placa al firmware escolar para cambiar la duración manual.');
+        const current = parse(await db('GET', key('config')));
+        if (!current) throw new HttpError(409, 'Espera a que la placa sincronice su configuración.');
+        const next = { ...current, duracion: duration, revision: id(), legacyRevision: current.legacyRevision || current.revision };
+        if (!await db('EVAL', CONFIG_CAS, 1, key('config'), current.revision, JSON.stringify(next))) throw new HttpError(409, 'La configuración cambió. Vuelve a intentar.');
+      }
       await db('SET', key('command'), JSON.stringify({ id: id(), action, expires: clock() + 30 }), 'EX', 35);
       return state();
     },
@@ -130,6 +142,12 @@ export function createService(db = redis, env = process.env, clock = () => Math.
       const restante = Number(body.restante), proxima = Number(body.proxima);
       if (!Number.isInteger(restante) || restante < 0 || restante > 3600 || !Number.isSafeInteger(proxima) || proxima < 0) throw new HttpError(400, 'Telemetría inválida');
       const telemetry = { proto: body.proto === '2' ? 2 : 1, hora: body.reloj, encendido: body.encendido === '1', restante, proxima, revision: body.revision, ack: body.ack, seen: clock() };
+      if (body.evento) {
+        const eventoHora = Number(body.eventoHora);
+        if (!/^[a-f0-9]{16}$/.test(body.evento) || !Number.isSafeInteger(eventoHora) || eventoHora < 0 || eventoHora > clock() + 60) throw new HttpError(400, 'Activación inválida');
+        telemetry.evento = body.evento;
+        telemetry.eventoHora = eventoHora;
+      }
       // Una operación atómica: inicializa sin pisar cambios web y registra la confirmación.
       const script = `redis.call('SET',KEYS[1],ARGV[1],'NX')
 redis.call('SET',KEYS[2],ARGV[2])

@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', 'timbre_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
       return res.status(200).json({ ok: true });
     }
-    const result = action === 'estado' ? await service.state() : action === 'programar' ? await service.program(body) : await service.command(action === 'encender' ? 1 : 2);
+    const result = action === 'estado' ? await service.state() : action === 'programar' ? await service.program(body) : await service.command(action === 'encender' ? 1 : 2, body);
     return res.status(200).json(result);
   } catch (error) {
     const status = error instanceof HttpError ? error.status : 503;

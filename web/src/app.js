@@ -3,12 +3,15 @@ import { createElement } from 'react';
 import { DayTimeline } from './DayTimeline.jsx';
 import { AlarmList } from './AlarmList.jsx';
 import { leerJson } from './apiResponse.js';
+import { activationTracker } from './activation.js';
+let nuevaActivacion = activationTracker();
 const $ = id => document.getElementById(id);
 const listaRoot = createRoot($('lista'));
 const timelineRoot = createRoot($('dayTimeline'));
 const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], ORDEN = [1,2,3,4,5,6,0];
 let datos = null, autenticado = false, ocupado = false, filtro = -1, editId = null, editBase = null, generacion = 0;
 let avisoGuardado = null;
+let esperaManual = null, timerManual = null;
 $('dias').innerHTML = ORDEN.map(d => `<label class="day"><input type="checkbox" data-dia="${d}" aria-label="${DIAS[d]}" aria-describedby="editorError"><span>${['D','L','M','X','J','V','S'][d]}</span></label>`).join('');
 $('filtros').innerHTML = [-1,...ORDEN].map(d => `<button data-filtro="${d}" aria-pressed="${d===-1}">${d===-1?'Todos':DIAS[d]}</button>`).join('');
 function escribirAviso(id, texto, tipo = 'info') {
@@ -27,7 +30,11 @@ function mostrarError(error, aviso = 'alerta', campo = null) {
  if (campo) { campo.setAttribute('aria-invalid', 'true'); campo.focus(); }
 }
 function mostrarLogin(mensaje = '', tipo = 'info') {
+ clearTimeout(timerManual); esperaManual = null; $('avisoManual').hidden = true;
+ nuevaActivacion = activationTracker();
+ escribirAviso('avisoActivacion', '');
  generacion++; autenticado=false; datos=null; avisoGuardado=null;
+ $('duracionManual').value='';
  timelineRoot.render(null);
  $('app').hidden=true; $('login').hidden=false; $('conexion').hidden=true;
  $('confirmacion').close(); $('editor').close(); $('clave').value='';
@@ -63,13 +70,26 @@ function renderLista() {
  document.querySelectorAll('[data-filtro]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.filtro)===filtro)));
 }
 function pintar(d) {
+ if (esperaManual && d.ultimoComando === esperaManual) {
+  terminarEsperaManual('Orden recibida por la placa', 'La placa confirmó la recepción de tu solicitud.', 'success');
+ } else if (esperaManual && d.orden && d.orden.id !== esperaManual) {
+  terminarEsperaManual('La solicitud fue reemplazada', 'Se recibió otra orden. No se pudo confirmar esta solicitud.', 'warning');
+ }
+ if (nuevaActivacion(d)) {
+  const hora = new Intl.DateTimeFormat('es-PE', {timeZone:'America/Lima', hour:'2-digit', minute:'2-digit', second:'2-digit'}).format(new Date((d.ultimaActivacion?.hora || d.ahora) * 1000));
+  escribirAviso('avisoActivacion', `Timbre activado · ${hora}. La placa confirmó la activación.`, 'success');
+  if (document.visibilityState === 'visible' && typeof navigator.vibrate === 'function') {
+   try { navigator.vibrate([200, 100, 200]); } catch { /* La confirmación visual sigue disponible. */ }
+  }
+ }
  timelineRoot.render(createElement(DayTimeline, { alarmas: d.alarmas, serverTime: d.ahora, pending: d.pendiente || !d.online || d.requiereActualizacion }));
  datos=d;autenticado=true;$('estadoBreve').textContent=d.online?(d.encendido?'Sonando':'En línea'):'Sin conexión';$('estadoBreve').classList.toggle('offline',!d.online);$('login').hidden=true;$('app').hidden=false;$('conexion').hidden=true;
  $('estado').textContent=!d.online?'Timbre sin conexión':d.encendido?`Sonando · ${d.restante} s restantes`:'Timbre conectado';
  $('punto').classList.toggle('on',d.online);$('actualizacion').hidden=!d.requiereActualizacion;
  $('nube').textContent=d.requiereActualizacion?'Actualiza la placa para sincronizar los horarios escolares.':!d.online?'Los cambios quedan pendientes hasta que se conecte la placa.':d.pendiente?'Horarios guardados. Esperando confirmación de la placa…':d.ordenPendiente?'Orden enviada. Esperando confirmación…':'Todos los horarios están sincronizados.';
  $('reloj').textContent='Reloj de la placa · '+d.hora;
- $('manualInfo').textContent=`Prueba de ${d.duracion} segundos con apagado automático.`;
+ if (!$('duracionManual').value) $('duracionManual').value = d.duracion;
+ actualizarDuracionManual();
  const active=d.alarmas.filter(a=>a.activa);
  $('avisoEstado').hidden=d.online&&!d.pendiente&&!d.ordenPendiente&&!d.requiereActualizacion;
  $('punto').classList.toggle('ringing',d.online&&d.encendido);
@@ -91,10 +111,12 @@ function pintar(d) {
  renderLista();controles();
 }
 function controles() {
+ document.querySelectorAll('[data-editor-tab]').forEach(button => { button.disabled = ocupado; });
  for (const id of ['nuevo','nuevoVacio','guardar','salir','cancelar','cerrarEditor','eliminarEditor','cancelarEliminar','confirmarEliminar']) $(id).disabled=ocupado;
  $('nuevo').disabled=ocupado||(datos?.alarmas.length>=32);
  $('nuevoVacio').disabled=$('nuevo').disabled;
- for (const id of ['probar','detener']) $(id).disabled=ocupado||!datos?.online;
+ for (const id of ['probar','duracionManual']) $(id).disabled=ocupado||!datos?.online;
+ $('probar').disabled ||= !!esperaManual;
  renderLista();
  $('alarmForm').setAttribute('aria-busy',String(ocupado));
  $('guardar').textContent=ocupado?'Guardando…':'Guardar horario';
@@ -121,7 +143,7 @@ async function consultar() {
    }
   }
  }
- setTimeout(consultar,10000);
+ setTimeout(consultar,esperaManual ? 2000 : 10000);
 }
 for (const [formulario, aviso] of [['loginForm','loginError'],['alarmForm','editorError']]) {
  $(formulario).noValidate=true;
@@ -195,9 +217,66 @@ async function alternar(id, checked) {
  try { await guardarLista(datos.alarmas.map(a=>a.id===id?{...a,activa:checked}:a),datos,checked?'Horario activado.':'Horario desactivado.'); }
  catch(e) { mostrarError(e); renderLista(); }
 }
-async function manual(url){if(ocupado)return;ocupado=true;generacion++;avisoGuardado=null;escribirAviso('alerta','');escribirAviso('mensaje','');controles();try{pintar(await pedir(url,{}));escribirAviso('mensaje',url==='/encender'?'Prueba solicitada. Esperando a la placa…':'Apagado solicitado. Esperando a la placa…');}catch(e){mostrarError(e);}finally{ocupado=false;controles();}}
+function avisoManual(titulo, detalle, tipo, cargando = false) {
+ const aviso = $('avisoManual');
+ aviso.hidden = false;
+ aviso.dataset.tipo = tipo;
+ aviso.classList.toggle('loading', cargando);
+ $('manualTitulo').textContent = titulo;
+ $('manualDetalle').textContent = detalle;
+}
+function terminarEsperaManual(titulo, detalle, tipo) {
+ clearTimeout(timerManual); esperaManual = null;
+ avisoManual(titulo, detalle, tipo);
+ controles();
+}
+async function manual(url) {
+ if (ocupado || esperaManual) return;
+ ocupado=true;generacion++;avisoGuardado=null;
+ escribirAviso('alerta','');escribirAviso('mensaje','');controles();
+ avisoManual('Enviando solicitud…', 'Conectando con el servicio del timbre.', 'info', true);
+ try {
+  const d = await pedir(url,url==='/encender'?{duracion:$('duracionManual').value}:{});
+  esperaManual = d.orden?.id || null;
+  if (!esperaManual) {
+   avisoManual('Solicitud enviada', 'No se pudo obtener el identificador para confirmar la respuesta de la placa.', 'warning');
+  } else {
+   avisoManual('Prueba solicitada', 'Esperando la confirmación de la placa…', 'info', true);
+   timerManual = setTimeout(() => terminarEsperaManual('Sin confirmación de la placa', 'No se recibió confirmación a tiempo. Revisa el estado del dispositivo antes de volver a intentar.', 'warning'), Math.max(0, d.orden.vence - d.ahora + 15) * 1000);
+  }
+  pintar(d);
+ } catch(e) {
+  clearTimeout(timerManual); esperaManual = null;
+  if (!e.sesionCerrada) avisoManual('No se pudo confirmar la solicitud', e.message, 'error');
+ } finally {ocupado=false;controles();}
+}
 document.querySelectorAll('[data-panel]').forEach(button=>button.onclick=()=>{
  document.querySelector('.next').hidden=button.dataset.panel!=='panelAlarmas';
  document.querySelectorAll('[data-panel]').forEach(tab=>{const selected=tab===button;$(tab.dataset.panel).hidden=!selected;if(selected)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');});
 });
-$('probar').onclick=()=>manual('/encender');$('detener').onclick=()=>manual('/apagar');consultar();
+document.querySelectorAll('[data-editor-tab]').forEach(button => {
+ button.onclick = () => {
+  if (ocupado) return;
+  $('editor').close();
+  const tab = $(button.dataset.editorTab);
+  tab.click();
+  tab.focus();
+ };
+});
+function actualizarDuracionManual() {
+ const input = $('duracionManual');
+ const seconds = Number(input.value);
+ $('manualInfo').textContent = input.value && input.checkValidity() ? `Se apagará automáticamente después de ${seconds} segundos. Esta duración se guarda al tocar el timbre.` : 'Elige entre 1 y 3600 segundos (máximo 1 hora).';
+}
+$('duracionManual').addEventListener('input', () => {
+ $('duracionManual').removeAttribute('aria-invalid');
+ escribirAviso('manualError', '');
+ actualizarDuracionManual();
+});
+$('probar').onclick=()=>{
+ const input = $('duracionManual');
+ if (!input.value || !input.checkValidity()) return mostrarError('Escribe una duración de 1 a 3600 segundos, sin decimales.', 'manualError', input);
+ escribirAviso('manualError', '');
+ manual('/encender');
+};
+consultar();

@@ -124,3 +124,59 @@ test('ediciones concurrentes y borrar todos los horarios', async () => {
   const v2 = await s.sync({...report, proto:'2'}, auth);
   assert.match(v2, /^v2 [a-f0-9]{32} 0 10 - 0 0\n$/);
 });
+
+test('duración manual persistida llega a la placa sin modificar los horarios', async () => {
+  const { service: s, auth } = fixture();
+  await s.sync({ ...report, proto: '2' }, auth);
+  const initial = await s.state();
+  await s.program({ alarmas: JSON.stringify(bells), revision: initial.revision });
+  const before = await s.state();
+  const after = await s.command(1, { duracion: '25' });
+  assert.equal(after.duracion, 25);
+  assert.notEqual(after.revision, before.revision);
+  assert.deepEqual(after.alarmas, before.alarmas);
+  const response = await s.sync({ ...report, proto: '2', revision: before.revision }, auth);
+  const header = response.split('\n')[0].split(' ');
+  assert.equal(header[1], after.revision);
+  assert.equal(header[3], '25');
+  assert.equal(header[5], '1');
+  await s.command(2);
+  assert.equal((await s.state()).duracion, 25);
+});
+
+test('duración manual rechaza valores inválidos y firmware antiguo', async () => {
+  const { service: s, auth } = fixture();
+  await s.sync({ ...report, proto: '2' }, auth);
+  for (const duracion of ['', '0', '-1', '1.5', '3601', 'abc']) {
+    await assert.rejects(s.command(1, { duracion }), { status: 400 });
+  }
+  assert.equal((await s.state()).ordenPendiente, false);
+  for (const duracion of ['1', '3600']) {
+    assert.equal((await s.command(1, { duracion })).duracion, Number(duracion));
+  }
+  await s.sync(report, auth);
+  await assert.rejects(s.command(1, { duracion: '25' }), { status: 409 });
+});
+
+test('conserva la confirmación de activación aunque el timbre ya se apagó', async () => {
+ const { service: s, auth } = fixture();
+ await s.sync({ ...report, proto: '2', evento: 'abcdef0123456789', eventoHora: '1800000000', encendido: '0' }, auth);
+ const state = await s.state();
+ assert.equal(state.encendido, false);
+ assert.deepEqual(state.ultimaActivacion, { id: 'abcdef0123456789', hora: 1800000000 });
+ await assert.rejects(s.sync({ ...report, evento: 'bad', eventoHora: '1800000000' }, auth), { status: 400 });
+});
+
+test('la app puede esperar la confirmación exacta incluso después de caducar la orden', async () => {
+ const { service: s, auth, advance } = fixture();
+ await s.sync(report, auth);
+ const sent = await s.command(1);
+ assert.match(sent.orden.id, /^[a-f0-9]{32}$/);
+ assert.equal(sent.ultimoComando, '-');
+ await s.sync({ ...report, ack: sent.orden.id }, auth);
+ assert.equal((await s.state()).ultimoComando, sent.orden.id);
+ advance(36);
+ const confirmed = await s.state();
+ assert.equal(confirmed.orden, null);
+ assert.equal(confirmed.ultimoComando, sent.orden.id);
+});
