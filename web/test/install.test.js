@@ -70,12 +70,12 @@ test('acceso rápido abre la instalación en un toque y se oculta al instalar', 
   events.appinstalled();
   assert.equal(elements.instalarDirecto.disabled, true);
 });
-test('manifiesto usa los iconos del colegio con dimensiones PNG correctas', () => {
+test('manifiesto usa los iconos del timbre con dimensiones PNG correctas', () => {
   const manifest = JSON.parse(readFileSync(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8'));
   assert.equal(manifest.short_name, 'Manuel Scorza');
   assert.ok(manifest.icons.some(icon => icon.purpose === 'maskable'));
   for (const icon of manifest.icons) {
-    assert.match(icon.src, /^\/icons\/colegio-/);
+    assert.match(icon.src, /^\/icons\/timbre-mono-/);
     const png = readFileSync(new URL(`../public${icon.src}`, import.meta.url));
     assert.equal(png.subarray(1, 4).toString(), 'PNG');
     assert.equal(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`, icon.sizes);

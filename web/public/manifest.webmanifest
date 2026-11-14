@@ -7,23 +7,23 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#172d46",
-  "theme_color": "#172d46",
+  "background_color": "#111111",
+  "theme_color": "#111111",
   "icons": [
     {
-      "src": "/icons/colegio-192.png",
+      "src": "/icons/timbre-mono-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/colegio-512.png",
+      "src": "/icons/timbre-mono-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/colegio-maskable-512.png",
+      "src": "/icons/timbre-mono-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

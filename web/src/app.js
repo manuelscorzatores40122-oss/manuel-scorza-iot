@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
 import { DayTimeline } from './DayTimeline.jsx';
 import { AlarmList } from './AlarmList.jsx';
+import { leerJson } from './apiResponse.js';
 const $ = id => document.getElementById(id);
 const listaRoot = createRoot($('lista'));
 const timelineRoot = createRoot($('dayTimeline'));
@@ -50,7 +51,7 @@ async function pedir(url, body) {
    const texto = r.status >= 500 ? 'El servicio no está disponible en este momento. Espera un momento y vuelve a intentar.' : r.status === 429 ? 'Demasiados intentos de ingreso. Espera 10 minutos antes de volver a intentar.' : await r.text();
    throw new Error(texto || 'No se pudo completar la acción. Vuelve a intentar.');
   }
-  return await r.json();
+  return await leerJson(r);
  }catch(e){if(e.name==='AbortError'||e instanceof TypeError)throw new Error('No se pudo conectar. Vuelve a intentar.');throw e;}finally{clearTimeout(timer);}
 }
 function renderLista() {
