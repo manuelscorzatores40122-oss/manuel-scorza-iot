@@ -5,3 +5,4 @@ node_modules/
 !.env.example
 cloud_config.h
 borrardor.txt
+web/dist/

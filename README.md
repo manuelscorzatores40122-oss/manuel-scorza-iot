@@ -13,7 +13,7 @@ La interfaz permite hasta **32 timbres semanales**. Cada horario tiene nombre (E
 ## 1. Vercel y almacenamiento
 
 - Importar o desplegar la carpeta **web** (no la carpeta raíz del sketch).
-- Framework: **Other**. Output Directory: **public**. Sin comando de build.
+- Framework: **Other**. Output Directory: **dist**. Comando de build: `npm run build` (configurado en `web/vercel.json`).
 - Conectar una base **Upstash Redis** persistente desde Storage / Marketplace. Revisar el plan y sus límites: una consulta cada 10 s supone unas 8640 peticiones de la placa al día, además de las consultas del navegador y las operaciones Redis. No se presupone que entre en un plan gratuito.
 - Configurar estas variables de entorno en Production, y también en Preview si se quiere probar allí:
 
@@ -117,7 +117,7 @@ Las órdenes se ejecutan como máximo una vez: se registra su identificador ante
 ```sh
 npm --prefix web test
 npm --prefix web run check
-node --check web/public/app.js
+node --check web/src/app.js
 node web/test/protocol.test.js
 ```
 
@@ -138,9 +138,47 @@ elige si lo envía. Mientras no haya un número válido, el enlace queda deshabi
 El manifiesto `web/public/manifest.webmanifest` y los iconos de `public/icons/`
 permiten instalar la app desde navegadores compatibles, al servirla por HTTPS
 (o localhost). El botón usa la invitación de instalación cuando el navegador la
-ofrece; en los demás casos muestra instrucciones, incluidas las de Safari en iOS.
+ofrece. «Instalar app» solo se habilita cuando existe una invitación nativa: al
+pulsarlo abre la confirmación y nunca abre instrucciones manuales. La ayuda
+«Compatibilidad de instalación» es independiente; explica las limitaciones de iOS
+y de navegadores que aún no habilitan el evento de instalación.
+El acceso rápido «Instalar app» aparece también antes del login cuando el navegador
+habilita la instalación. Un toque abre su confirmación; no se puede omitirla.
+Los iconos `colegio-*.png` usan el escudo institucional, con una variante
+maskable con margen para evitar recortes en Android y otra de 180 px para iOS.
 La app instalada requiere internet para acceder al servicio; no almacena horarios,
 sesiones ni respuestas de la API para uso sin conexión. Los horarios confirmados
 siguen ejecutándose en la placa según las condiciones descritas anteriormente.
 
 Pruebas del contacto y del flujo de instalación: `node --test web/test/install.test.js`.
+
+## Desarrollo de la interfaz React
+
+La migración es gradual: `web/src/AlarmList.jsx` renderiza los horarios con React;
+`web/src/app.js` conserva el controlador de sesión, editor y sincronización.
+La entrada HTML está en `web/index.html`; `web/public/` contiene los recursos estáticos.
+
+Desde `web/`, ejecuta `npm ci` y `npm run build` para generar `dist/`.
+`npm run dev` inicia Vite con la API local en `/api`, usando las variables de
+`web/.env` para sesión y horarios. También puedes usar `vercel dev`.
+`npm test` ejecuta las pruebas del proyecto.
+No publiques `public/` directamente: la interfaz ahora necesita compilación.
+
+### Variables locales
+
+El archivo `web/.env` está excluido de Git. Configura allí
+`UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN` con los datos de tu
+base Upstash. `ADMIN_USER` y `ADMIN_PASSWORD` definen el acceso local.
+`DEVICE_TOKEN` debe coincidir con el firmware si conectas una placa a esta API.
+Reinicia el servidor de desarrollo después de cambiar las variables.
+
+La marca de campana en `web/public/assets/timbre-mark.svg` identifica la app;
+no sustituye al escudo oficial de la institución.
+
+### Línea del día
+
+La vista de horarios incluye `DayTimeline.jsx`: reloj de Perú, escala de 07:00 a
+18:00, indicador actual y marcas de los timbres activos del día. La escala se
+amplía si hay horarios fuera de ese intervalo. El reloj avanza cada segundo
+partiendo de la hora del servidor; la línea no indica que un timbre ya se ejecutó.
+Las configuraciones pendientes se identifican como pendientes de confirmación.
