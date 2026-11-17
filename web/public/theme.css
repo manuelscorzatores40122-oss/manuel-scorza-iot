@@ -282,8 +282,9 @@ main:has(> .login:not([hidden])) {
 @media (min-width: 900px) {
   main:has(> #app:not([hidden])) {
     width: 100%;
-    max-width: 1440px;
-    padding: 0 clamp(28px, 4vw, 64px) 56px;
+    max-width: none;
+    padding: 0 clamp(24px, 2vw, 40px) 56px;
+    border-inline: 0;
   }
   #app > header { min-height: 112px; margin-bottom: 0; gap: 24px; }
   #app .school-brand { gap: 16px; }
