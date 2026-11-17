@@ -3,6 +3,7 @@ import React from 'react';
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const INICIALES = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
+
 export function AlarmList({ alarmas, ocupado, onEdit, onToggle }) {
   return alarmas.map(alarma => (
     <article key={alarma.id} className={`alarm${alarma.activa ? '' : ' off'}`}>
