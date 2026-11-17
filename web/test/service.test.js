@@ -14,6 +14,11 @@ function fixture() {
       case 'INCR': { const n = Number(values.get(args[0]) || 0) + 1; values.set(args[0], n); return n; }
       case 'EXPIRE': expires.set(args[0], now + args[1]); return 1;
       case 'EVAL': {
+        if (args[0].includes('compare-and-set credentials')) {
+          const [, , k, expected, next] = args;
+          if ((values.get(k) || '') !== expected) return 0;
+          values.set(k, next); return 1;
+        }
         if (args[0].includes('compare-and-set schedule')) {
           const [, , k, expected, next] = args;
           const current = values.get(k);
@@ -29,7 +34,7 @@ function fixture() {
     }
   };
   const env = { ADMIN_USER: 'admin', ADMIN_PASSWORD: '123456', DEVICE_TOKEN: 'a'.repeat(64) };
-  return { service: createService(db, env, () => now), advance: s => now += s, auth: `Bearer ${env.DEVICE_TOKEN}` };
+  return { values, service: createService(db, env, () => now), advance: s => now += s, auth: `Bearer ${env.DEVICE_TOKEN}` };
 }
 const config = { hora: '04:00', activo: '1', dias: '62', duracion: '10' };
 const report = { ...config, revision: '-', ack: '-', reloj: '08:39:00', encendido: '0', restante: '0', proxima: '1800069660' };
@@ -179,4 +184,25 @@ test('la app puede esperar la confirmación exacta incluso después de caducar l
  const confirmed = await s.state();
  assert.equal(confirmed.orden, null);
  assert.equal(confirmed.ultimoComando, sent.orden.id);
+});
+
+test('cambiar contraseña guarda hash, invalida sesiones y deshabilita la clave inicial', async () => {
+ const { service: s, values } = fixture();
+ const token = await s.login({ usuario: 'admin', clave: '123456' }, 'one');
+ const second = await s.login({ usuario: 'admin', clave: '123456' }, 'two');
+ const nueva = 'mi nueva frase privada';
+ await assert.rejects(s.changePassword({ actual: 'incorrecta', nueva, confirmacion: nueva }, token), { status: 400 });
+ await assert.rejects(s.changePassword({ actual: '123456', nueva: 'corta', confirmacion: 'corta' }, token), { status: 400 });
+ await assert.rejects(s.changePassword({ actual: '123456', nueva, confirmacion: 'otra' }, token), { status: 400 });
+ const result = await s.changePassword({ actual: '123456', nueva, confirmacion: nueva }, token);
+ assert.deepEqual(result, { ok: true });
+ const stored = values.get('timbre:v1:credentials');
+ assert.ok(!stored.includes(nueva));
+ assert.equal(JSON.parse(stored).recoveryHash, undefined);
+ assert.equal(JSON.parse(stored).hash.length, 128);
+ for (const t of [token, second]) await assert.rejects(s.session(`timbre_session=${t}`), { status: 401 });
+ await assert.rejects(s.login({ usuario: 'admin', clave: '123456' }, 'old'), { status: 401 });
+ const current = await s.login({ usuario: 'admin', clave: nueva }, 'new');
+ assert.equal(await s.session(`timbre_session=${current}`), current);
+ assert.equal((await s.state()).credentials, undefined);
 });

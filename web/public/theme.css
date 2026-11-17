@@ -15,7 +15,6 @@ header{padding:26px 0;margin-bottom:28px;gap:12px}
 .notice,.notice[data-tipo=success],.notice[data-tipo=warning],.notice[data-tipo=error],.warning{background:#222;border-color:#777;color:#eee}.notice[data-tipo=error]{border-left:3px solid #eee}.notice[data-tipo=warning],.warning{border-style:dashed}.error{color:#eee;border-color:#eee}input[aria-invalid=true],.day input[aria-invalid=true]+span{border-color:white;outline-color:white}.danger{background:#eee;color:#111}
 .login{padding-top:8vh}.login h1{color:#f5f5f2}.logo img{width:80px;height:90px}.login .card{padding:26px}button,a,input{touch-action:manipulation}button{overflow-wrap:anywhere}input[type=text],input[type=password],input[type=number]{min-height:44px;font-size:16px}.time-inputs input{font-size:34px}.day span{height:44px}.presets button{min-height:40px}.delete-alarm{min-height:44px}
 .install-quick{display:flex;align-items:center;gap:14px;margin:20px 0;padding:16px;background:#1b1b1b;border:1px solid #444;border-radius:8px}.install-quick img{border-radius:10px}.install-quick strong{font-size:14px}.install-quick p{font-size:12px;color:#aaa;margin:2px 0 0}.install-quick button{margin-left:auto}.install-help-button{align-self:flex-start;margin-top:8px;text-align:left;text-decoration:underline}
-.day-timeline{margin:0 0 26px;padding:16px 0;border-bottom:1px solid #333;background:none}.timeline-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.timeline-heading h2{margin:0;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:#aaa}.timeline-heading time{font-size:12px;font-variant-numeric:tabular-nums;color:#ddd}.timeline-chart{display:block;margin-top:4px;overflow:visible}.timeline-track{stroke:#333;stroke-width:3;stroke-linecap:round}.timeline-progress{stroke:#888;stroke-width:3;stroke-linecap:round}.timeline-now{stroke:#fff;stroke-width:1.5}.timeline-bell{fill:#eee;stroke:#111;stroke-width:1.5}.timeline-bell.passed{fill:#888}.timeline-chart text{font:10px system-ui,sans-serif;fill:#aaa}.timeline-caption{margin:0;font-size:11px;color:#aaa}
 @media(min-width:800px){#panelDispositivo:not([hidden]){display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}#panelDispositivo>.card{margin:0}#panelDispositivo>.tip{padding:26px 0}.alarm{grid-template-columns:minmax(0,1fr) auto auto}.week{gap:12px}.week span{font-size:11px}.bottom-nav button{flex:0 1 240px}}
 @media(max-width:600px){main{padding:0 20px 112px}header{gap:8px;padding:22px 0;margin-bottom:28px}.school-brand{gap:8px}.school-brand img{width:30px;height:36px}.school-brand .brand{font-size:15px}.school-brand .brand small{font-size:6px;letter-spacing:.7px}.quiet{font-size:9px;padding:6px 0}.connection{font-size:9px;padding:4px 6px}.next h1{font-size:28px}.section-head h2{font-size:19px}.section-head .small{font-size:9px}.alarm{gap:12px;padding:22px 0;grid-template-columns:minmax(0,1fr) auto auto}.time-digits{font-size:29px}.week{gap:3px}.week span{font-size:8px}.alarm-caption{font-size:11px}.bottom-nav{padding-inline:12px}.bottom-nav button{font-size:11px}.card{padding:24px}.manual{padding:0}.manual h2{font-size:28px}.stop-panel{padding:16px;gap:12px}.stop-panel p{font-size:11px}.install-quick{flex-wrap:wrap}.install-quick>div{flex:1}.install-quick button{width:100%;margin:0}.actions{flex-wrap:wrap}.actions button{min-width:100px}}
 @media(prefers-reduced-motion:reduce){*,*::after{transition:none!important;scroll-behavior:auto!important}}
@@ -60,3 +59,221 @@ header{padding:26px 0;margin-bottom:28px;gap:12px}
 .activation-notice{border-left:3px solid #f5f5f2;font-weight:600}.activation-notice:empty{display:none}
 
 .manual-feedback{display:flex;align-items:center;gap:20px;min-height:112px;margin:22px 0;padding:26px 28px;border:1px solid #777;border-radius:12px;background:#222;color:#f5f5f2;box-shadow:0 8px 24px #0002}.manual-feedback strong{display:block;font-size:20px;line-height:1.35}.manual-feedback p{margin:8px 0 0;color:#bbb;font-size:14px;line-height:1.6}.manual-spinner{display:none;flex-shrink:0;width:34px;height:34px;border:3px solid #555;border-top-color:#fff;border-radius:50%}.manual-feedback.loading .manual-spinner{display:block;animation:manual-spin .9s linear infinite}.manual-feedback[data-tipo=success]{border-color:#ddd}.manual-feedback[data-tipo=success] .manual-spinner{display:grid;place-items:center;border:1px solid #aaa;font-size:20px}.manual-feedback[data-tipo=success] .manual-spinner::after{content:'✓'}.manual-feedback[data-tipo=warning]{border-style:dashed}@keyframes manual-spin{to{transform:rotate(360deg)}}@media(max-width:600px){.manual-feedback{padding:22px 18px;gap:16px;min-height:112px}.manual-feedback strong{font-size:18px}.manual-feedback p{font-size:13px}}@media(prefers-reduced-motion:reduce){.manual-feedback.loading .manual-spinner{animation:none}}
+
+
+/* Acceso: identidad del colegio y formulario con jerarquía clara. */
+.login{max-width:940px;padding:clamp(40px,10vh,110px) 0 20px;margin:0 auto;gap:clamp(36px,6vw,84px);align-items:center}
+.login:not([hidden]){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px)}
+.login-intro,.login-access{min-width:0}.login-school{display:flex;align-items:center;gap:14px;margin-bottom:52px}.login-school img{object-fit:contain;flex-shrink:0}.login-school span{display:block;font-size:10px;color:#999;letter-spacing:1.4px;margin-bottom:4px}.login-school strong{display:block;font-size:23px;letter-spacing:-.6px;line-height:1.3}.login-intro .eyebrow{font-size:9px;letter-spacing:1.8px;margin-bottom:18px}.login h1{font-size:clamp(34px,4.1vw,49px);font-weight:650;letter-spacing:-1.8px;line-height:1.12;margin:0 0 22px}.login-description{max-width:340px;color:#aaa;font-size:14px;line-height:1.8;margin-bottom:28px}.login-features{display:flex;flex-wrap:wrap;gap:8px 16px;padding-top:22px;border-top:1px solid #333;color:#aaa;font-size:11px}.login-features span::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:#888;margin-right:8px;vertical-align:middle}
+.login .card{margin:0;padding:30px;background:#181818;border:1px solid #3b3b3b;border-radius:16px;box-shadow:0 18px 60px #0003}.login-form-heading{display:flex;align-items:center;gap:14px;margin-bottom:26px}.login-lock{display:grid;place-items:center;width:42px;height:46px;border:1px solid #444;border-radius:10px;flex-shrink:0;color:#ddd}.login-lock svg{width:22px;height:22px}.login-form-heading h2{font-size:24px;letter-spacing:-.6px;margin:0 0 5px}.login-form-heading p{font-size:11px;color:#aaa;margin:0;line-height:1.6}.login label{font-size:12px;color:#ccc;margin:20px 0 8px}.login input[type=text],.login input[type=password]{height:52px;padding:13px 14px;border:1px solid #484848;background:#111;border-radius:8px;color:#fff;font-size:16px}.login input::placeholder{color:#888}.login-password{position:relative}.login-password input{padding-right:84px!important}.login-password button{position:absolute;right:5px;top:4px;min-height:44px;padding:8px 12px;font-size:11px;color:#bbb;border-radius:5px}.login-password button:hover{background:#262626;color:white}.login #entrar{position:relative;margin-top:16px;min-height:50px;border-radius:8px;font-size:13px;font-weight:700}.login-form-note{margin:16px 0 0;text-align:center;font-size:10px;color:#999;line-height:1.7}.login-signature{text-align:center;font-size:9px;color:#888;letter-spacing:1.2px;margin:20px 0 0}.login-signature span{padding:0 6px}.login .notice{margin-bottom:0}.login #loginError{font-size:12px;margin:12px 0 0}.login form[aria-busy=true] #entrar::before{content:'';display:inline-block;width:13px;height:13px;margin-right:9px;border:2px solid #999;border-top-color:#111;border-radius:50%;vertical-align:-2px;animation:manual-spin .8s linear infinite}
+@media(max-width:760px){.login:not([hidden]){grid-template-columns:minmax(0,1fr);gap:26px;max-width:430px}.login{padding-top:34px}.login-school{margin-bottom:30px}.login-school img{width:42px;height:50px}.login-school strong{font-size:21px}.login h1{font-size:36px;letter-spacing:-1.2px;margin-bottom:16px}.login-description{margin-bottom:0;font-size:13px}.login-features{display:none}.login .card{padding:26px 22px}.login-form-heading{margin-bottom:22px}.login-intro .eyebrow{margin-bottom:12px}.login-signature{font-size:8px}.login-form-heading h2{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.login form[aria-busy=true] #entrar::before{animation:none}}
+
+/* Formulario de acceso con esquinas rectas. */
+.login .card,.login-lock,.login input[type=text],.login input[type=password],.login-password button,.login #entrar,.login .quiet,.login .notice{border-radius:0}
+.login .card{box-shadow:none}
+
+.login-support{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:24px;border-top:1px solid #333;margin-top:12px;padding-top:26px}.login-support .eyebrow{font-size:9px;margin:0 0 10px}.login-support h2{font-size:17px;letter-spacing:-.3px;margin:0 0 10px}.login-support p{font-size:12px;line-height:1.7;color:#aaa;margin:0}.login-support .login-developer{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px}.login-developer strong{color:#ddd;font-weight:500}.login-support a{flex-shrink:0;display:inline-flex;align-items:center;gap:12px;text-decoration:none;border-radius:0;background:transparent;color:#eee;border:1px solid #555;padding:12px 16px;font-size:12px;min-height:44px}.login-support a:hover{background:#252525;border-color:#aaa}@media(max-width:760px){.login-support{flex-direction:column;align-items:stretch;gap:18px;margin-top:0;padding-top:24px}.login-support a{justify-content:center}.login-support h2{font-size:16px}}
+
+/* Login con paisaje generado por IA y escudo original del colegio. */
+main:has(> .login:not([hidden])) {
+  max-width: none;
+  padding: 0 max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
+  border: 0;
+  background: linear-gradient(#10152230, #10152245), url('/assets/login-montanas-ia.png') center bottom / cover no-repeat;
+}
+.login {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100svh;
+  padding: clamp(32px, 5vh, 64px) 0 max(24px, env(safe-area-inset-bottom));
+  align-content: center;
+  text-shadow: 0 1px 10px #0003;
+}
+.login:not([hidden]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.login-intro { text-align: center; }
+.login-school { flex-direction: column; gap: 14px; margin-bottom: 12px; }
+.login-school img { width: 112px; height: 130px; filter: drop-shadow(0 8px 18px #0004); }
+.login-school span { color: #d4d4e1; font-size: 11px; letter-spacing: 2px; margin-bottom: 5px; }
+.login-school strong { font-size: clamp(27px, 3vw, 34px); letter-spacing: -.8px; }
+.login-intro .eyebrow { color: #d4d4e1; margin: 0; font-size: 10px; letter-spacing: 2px; }
+.login-description, .login-features, .login-lock, .login-signature { display: none; }
+.login .card { padding: 0; margin: 0; border: 0; background: transparent; box-shadow: none; }
+.login-form-heading { display: block; text-align: center; margin-bottom: 20px; }
+.login-form-heading h2 { font-size: 23px; margin-bottom: 6px; }
+.login-form-heading p { color: #d4d4e1; font-size: 13px; }
+.login label { color: #eeeef4; font-size: 13px; margin: 16px 0 8px 18px; }
+.login input[type=text], .login input[type=password] {
+  min-width: 0;
+  height: 54px;
+  padding: 14px 20px;
+  border: 1px solid #ffffff30;
+  border-radius: 28px;
+  background: #ffffff16;
+  color: #fff;
+  font-size: 16px;
+  box-shadow: inset 0 1px 0 #ffffff08;
+  scroll-margin-block: 24px;
+}
+.login input::placeholder { color: #d4d4e1; }
+.login input:focus-visible { background: #ffffff22; outline-color: #fff; }
+.login-password button { top: 5px; right: 8px; min-height: 44px; padding-inline: 12px; border-radius: 24px; color: #eeeef4; font-size: 12px; }
+.login-password button:hover { background: #ffffff18; }
+
+.login #entrar { margin-top: 12px; min-height: 52px; border-radius: 28px; background: #ed2862; color: #fff; font-size: 14px; box-shadow: 0 6px 22px #ed286225; }
+.login #entrar:hover { background: #d91b53; }
+.login-form-note { font-size: 11px; color: #d4d4e1; margin-top: 18px; }
+.login-support { justify-content: center; align-items: center; margin: 0; padding: 0; border: 0; }
+.login-support a { display: inline-flex; width: auto; min-height: 44px; padding: 8px; border: 0; background: transparent; color: #eeeef4; font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
+.login-support a:hover { background: transparent; color: #fff; }
+.login-support:not(:has(a:not([hidden]))) { display: none; }
+.login .notice, .login .error { overflow-wrap: anywhere; text-shadow: none; }
+.login #loginError:not(:empty) { background: #321e1ee6; padding: 12px; }
+@media (max-width: 600px) {
+  .login { padding-top: 28px; max-width: 400px; }
+  .login:not([hidden]) { gap: 20px; }
+  .login-school { gap: 10px; }
+  .login-school img { width: 82px; height: 96px; }
+  .login-school strong { font-size: 27px; }
+  .login-form-heading { margin-bottom: 16px; }
+  .login-form-heading h2 { font-size: 22px; }
+  .login-form-heading p { font-size: 12px; }
+  .login input[type=text], .login input[type=password] { height: 52px; }
+  .login-password button { top: 4px; }
+}
+@media (max-height: 700px) {
+  .login { padding-top: 24px; }
+  .login:not([hidden]) { gap: 16px; }
+  .login-school img { width: 76px; height: 88px; }
+  .login-school { gap: 8px; }
+}
+@media (min-width: 900px) {
+  .login { max-width: 1120px; }
+  .login:not([hidden]) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+    column-gap: clamp(48px, 8vw, 128px);
+    row-gap: 24px;
+  }
+  .login-intro { grid-column: 1; grid-row: 1; }
+  .login-access { grid-column: 2; grid-row: 1; }
+  .login-school { gap: 24px; margin-bottom: 18px; }
+  .login-school img { width: 180px; height: 208px; }
+  .login-school strong { font-size: clamp(34px, 3vw, 42px); }
+  .login-support { grid-column: 2; }
+}
+
+/* Todos arriba; los siete días juntos en la fila inferior. */
+.schedule .section-head { gap: 12px; }
+.schedule .section-head .small { flex-shrink: 0; }
+.schedule .filters {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px 4px;
+  max-width: 100%;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.schedule .filters button[data-filtro="-1"] {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding-inline: 12px;
+}
+.schedule .filters button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 3px;
+  border: 1px solid #363636;
+  border-radius: 7px;
+  background: #191919;
+  color: #c5c5c5;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+@media (hover: hover) {
+  .schedule .filters button:hover { background: #252525; border-color: #777; color: #fff; }
+}
+.schedule .filters button[aria-pressed=true] {
+  background: #f5f5f2;
+  border-color: #f5f5f2;
+  color: #111;
+  font-weight: 750;
+  box-shadow: 0 2px 8px #0003;
+}
+.schedule .filters button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* Estado visible con texto y color; avisos destacados por su importancia. */
+#estadoBreve {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+#estadoBreve::before { width: 8px; height: 8px; margin: 0; flex-shrink: 0; }
+#estadoBreve.online { color: #a7f3c4; background: #153525; border-color: #34875a; }
+#estadoBreve.online::before { background: #4ade80; box-shadow: 0 0 0 3px #4ade801a; }
+#estadoBreve.offline { color: #ffc4c4; background: #3a1c22; border-color: #a84955; }
+#estadoBreve.offline::before { background: #fb7185; border: 0; box-shadow: 0 0 0 3px #fb71851a; }
+.device .status {
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #a84955;
+  border-radius: 12px;
+  background: #3a1c22;
+  color: #ffc4c4;
+}
+.device .status:has(.dot.on) { background: #153525; border-color: #34875a; color: #a7f3c4; }
+.device .status strong { font-size: 16px; }
+.device .dot { width: 10px; height: 10px; flex-shrink: 0; background: #fb7185; border: 0; }
+.device .dot.on { background: #4ade80; }
+.device .dot.ringing { box-shadow: 0 0 0 5px #4ade8026; }
+#app .notice, #app .manual-feedback {
+  --notice-bg: #172b42;
+  --notice-border: #60a5fa;
+  --notice-text: #d6e9ff;
+  background: var(--notice-bg);
+  border: 1px solid var(--notice-border);
+  border-left: 5px solid var(--notice-border);
+  border-radius: 12px;
+  color: var(--notice-text);
+  padding: 20px 22px;
+  margin: 18px 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.65;
+  box-shadow: 0 6px 20px #0003;
+  overflow-wrap: anywhere;
+}
+#app [data-tipo=success] { --notice-bg: #153525; --notice-border: #4ade80; --notice-text: #c3f8d8; }
+#app [data-tipo=warning] { --notice-bg: #382c16; --notice-border: #fbbf24; --notice-text: #ffebba; }
+#app [data-tipo=error] { --notice-bg: #3a1c22; --notice-border: #fb7185; --notice-text: #ffd1d8; }
+#app .activation-notice { font-size: 16px; font-weight: 650; }
+#app .manual-feedback p { color: inherit; }
+#app .manual-spinner { border-color: var(--notice-border); }
+#app .manual-feedback.loading .manual-spinner { border-top-color: transparent; }
+#avisoEstado { width: 7px; height: 7px; background: #fbbf24; box-shadow: 0 0 0 3px #fbbf2420; }
+@media (max-width: 600px) {
+  #app header { flex-wrap: wrap; gap: 12px; }
+  #app header .school-brand { flex: 1 1 calc(100% - 90px); }
+  #estadoBreve { order: 3; width: 100%; min-height: 42px; font-size: 13px; }
+  #app .notice, #app .manual-feedback { padding: 16px; font-size: 14px; }
+  #app .activation-notice { font-size: 15px; }
+}
+
+#recuperacion .secondary{width:100%;margin-top:12px}
+#recoverySupportLink{display:block;text-align:center;text-decoration:none}
+#abrirRecuperacion{width:100%;margin-top:12px}
+
+#avisoConexionPanel p{margin:0}
+#avisoConexionPanel button{display:block;min-height:44px;margin:14px 0 0 auto;padding:10px 24px;border:1px solid currentColor;color:inherit;border-radius:8px}
+#avisoConexionPanel button:hover{background:#ffffff14}

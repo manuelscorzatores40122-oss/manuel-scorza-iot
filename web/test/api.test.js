@@ -14,3 +14,18 @@ test('rutas, método, protección CSRF y autenticación antes de leer Redis', as
   assert.equal((await request('POST', 'encender', { 'x-timbre-request': '1' })).code, 401);
   assert.equal((await request('GET', 'estado')).code, 401);
 });
+
+test('cambiar clave exige POST y protección CSRF', async () => {
+ for (const action of ['cambiar-clave']) {
+  assert.equal((await request('GET', action)).code, 405);
+  assert.equal((await request('POST', action)).code, 403);
+ }
+ assert.equal((await request('POST', 'cambiar-clave', { 'x-timbre-request': '1' })).code, 401);
+});
+
+test('recuperación automática no está disponible', async () => {
+ for (const action of ['recuperar-clave', 'restablecer-clave']) {
+  assert.equal((await request('GET', action)).code, 404);
+  assert.equal((await request('POST', action, { 'x-timbre-request': '1' })).code, 404);
+ }
+});

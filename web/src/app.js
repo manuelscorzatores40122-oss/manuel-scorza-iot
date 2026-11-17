@@ -1,16 +1,15 @@
 import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
-import { DayTimeline } from './DayTimeline.jsx';
 import { AlarmList } from './AlarmList.jsx';
 import { leerJson } from './apiResponse.js';
 import { activationTracker } from './activation.js';
 let nuevaActivacion = activationTracker();
 const $ = id => document.getElementById(id);
 const listaRoot = createRoot($('lista'));
-const timelineRoot = createRoot($('dayTimeline'));
 const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], ORDEN = [1,2,3,4,5,6,0];
 let datos = null, autenticado = false, ocupado = false, filtro = -1, editId = null, editBase = null, generacion = 0;
 let avisoGuardado = null;
+const avisosConexionAceptados = new Set();
 let esperaManual = null, timerManual = null;
 $('dias').innerHTML = ORDEN.map(d => `<label class="day"><input type="checkbox" data-dia="${d}" aria-label="${DIAS[d]}" aria-describedby="editorError"><span>${['D','L','M','X','J','V','S'][d]}</span></label>`).join('');
 $('filtros').innerHTML = [-1,...ORDEN].map(d => `<button data-filtro="${d}" aria-pressed="${d===-1}">${d===-1?'Todos':DIAS[d]}</button>`).join('');
@@ -18,6 +17,10 @@ function escribirAviso(id, texto, tipo = 'info') {
  const aviso = $(id);
  if (aviso.textContent !== texto) aviso.textContent = texto;
  aviso.dataset.tipo = tipo;
+ if (id === 'avisoConexion') {
+  $('avisoConexionPanel').dataset.tipo = tipo;
+  $('avisoConexionPanel').hidden = !texto || avisosConexionAceptados.has(tipo);
+ }
 }
 function limpiarError(formulario, aviso) {
  $(formulario).querySelectorAll('[aria-invalid]').forEach(campo => campo.removeAttribute('aria-invalid'));
@@ -29,13 +32,19 @@ function mostrarError(error, aviso = 'alerta', campo = null) {
  escribirAviso(aviso, error.message || error, 'error');
  if (campo) { campo.setAttribute('aria-invalid', 'true'); campo.focus(); }
 }
+$('aceptarAvisoConexion').onclick = () => {
+ avisosConexionAceptados.add($('avisoConexion').dataset.tipo);
+ $('avisoConexionPanel').hidden = true;
+ $('estadoBreve').focus({ preventScroll: true });
+};
 function mostrarLogin(mensaje = '', tipo = 'info') {
+ ocultarClave();
+ avisosConexionAceptados.clear();
  clearTimeout(timerManual); esperaManual = null; $('avisoManual').hidden = true;
  nuevaActivacion = activationTracker();
  escribirAviso('avisoActivacion', '');
  generacion++; autenticado=false; datos=null; avisoGuardado=null;
  $('duracionManual').value='';
- timelineRoot.render(null);
  $('app').hidden=true; $('login').hidden=false; $('conexion').hidden=true;
  $('confirmacion').close(); $('editor').close(); $('clave').value='';
  limpiarError('loginForm', 'loginError');
@@ -55,7 +64,7 @@ async function pedir(url, body) {
    throw error;
   }
   if(!r.ok){
-   const texto = r.status >= 500 ? 'El servicio no está disponible en este momento. Espera un momento y vuelve a intentar.' : r.status === 429 ? 'Demasiados intentos de ingreso. Espera 10 minutos antes de volver a intentar.' : await r.text();
+   const texto = r.status >= 500 ? 'El servicio no está disponible en este momento. Espera un momento y vuelve a intentar.' : r.status === 429 ? 'Demasiados intentos. Espera 10 minutos antes de volver a intentar.' : await r.text();
    throw new Error(texto || 'No se pudo completar la acción. Vuelve a intentar.');
   }
   return await leerJson(r);
@@ -82,8 +91,7 @@ function pintar(d) {
    try { navigator.vibrate([200, 100, 200]); } catch { /* La confirmación visual sigue disponible. */ }
   }
  }
- timelineRoot.render(createElement(DayTimeline, { alarmas: d.alarmas, serverTime: d.ahora, pending: d.pendiente || !d.online || d.requiereActualizacion }));
- datos=d;autenticado=true;$('estadoBreve').textContent=d.online?(d.encendido?'Sonando':'En línea'):'Sin conexión';$('estadoBreve').classList.toggle('offline',!d.online);$('login').hidden=true;$('app').hidden=false;$('conexion').hidden=true;
+ datos=d;autenticado=true;$('estadoBreve').textContent=d.online?(d.encendido?'Sonando':'En línea'):'Sin conexión';$('estadoBreve').classList.toggle('offline',!d.online);$('estadoBreve').classList.toggle('online',d.online);$('login').hidden=true;$('app').hidden=false;$('conexion').hidden=true;
  $('estado').textContent=!d.online?'Timbre sin conexión':d.encendido?`Sonando · ${d.restante} s restantes`:'Timbre conectado';
  $('punto').classList.toggle('on',d.online);$('actualizacion').hidden=!d.requiereActualizacion;
  $('nube').textContent=d.requiereActualizacion?'Actualiza la placa para sincronizar los horarios escolares.':!d.online?'Los cambios quedan pendientes hasta que se conecte la placa.':d.pendiente?'Horarios guardados. Esperando confirmación de la placa…':d.ordenPendiente?'Orden enviada. Esperando confirmación…':'Todos los horarios están sincronizados.';
@@ -103,7 +111,9 @@ function pintar(d) {
   $('proxima').textContent=hm+(bell?' · '+bell.nombre:'');
   $('fecha').textContent='En '+(hours?`${hours} h `:'')+(rest?`${rest} min`:'')+' · '+new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima',weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true}).format(next);
  }
- escribirAviso('avisoConexion', d.online ? '' : 'El timbre está sin conexión. Puedes guardar horarios, pero se aplicarán cuando vuelva a conectarse.', 'warning');
+ avisosConexionAceptados.delete('error');
+ if (d.online) avisosConexionAceptados.delete('warning');
+ escribirAviso('avisoConexion', d.online ? '' : 'El timbre está sin conexión. Puedes seguir guardando horarios; se aplicarán cuando vuelva a conectarse.', 'warning');
  if (avisoGuardado) {
   if (avisoGuardado.revision !== d.revision) { avisoGuardado=null; escribirAviso('mensaje', 'La lista de horarios se ha actualizado.'); }
   else mostrarGuardado(d);
@@ -135,6 +145,7 @@ async function consultar() {
      $('estado').textContent='Sin conexión con el servidor';
      $('estadoBreve').textContent='Sin conexión';
      $('estadoBreve').classList.add('offline');
+     $('estadoBreve').classList.remove('online');
      $('punto').classList.remove('on','ringing');
      $('avisoEstado').hidden=false;
      if(datos)datos.online=false;
@@ -149,6 +160,19 @@ for (const [formulario, aviso] of [['loginForm','loginError'],['alarmForm','edit
  $(formulario).noValidate=true;
  $(formulario).addEventListener('input',()=>limpiarError(formulario,aviso));
 }
+function ocultarClave() {
+ $('clave').type = 'password';
+ $('mostrarClave').textContent = 'Mostrar';
+ $('mostrarClave').setAttribute('aria-pressed', 'false');
+ $('mostrarClave').setAttribute('aria-label', 'Mostrar contraseña');
+}
+$('mostrarClave').onclick = () => {
+ const mostrar = $('clave').type === 'password';
+ $('clave').type = mostrar ? 'text' : 'password';
+ $('mostrarClave').textContent = mostrar ? 'Ocultar' : 'Mostrar';
+ $('mostrarClave').setAttribute('aria-pressed', String(mostrar));
+ $('mostrarClave').setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+};
 $('loginForm').onsubmit=async e=>{
  e.preventDefault();if($('entrar').disabled)return;
  limpiarError('loginForm','loginError');escribirAviso('loginInfo','');
@@ -156,7 +180,7 @@ $('loginForm').onsubmit=async e=>{
  if(!usuario)return mostrarError('Escribe tu usuario.','loginError',$('usuario'));
  if(!clave.trim())return mostrarError('Escribe tu contraseña.','loginError',$('clave'));
  generacion++;$('entrar').disabled=true;$('entrar').textContent='Ingresando…';$('loginForm').setAttribute('aria-busy','true');
- try{await pedir('/login',{usuario,clave});$('clave').value='';generacion++;pintar(await pedir('/estado'));}
+ try{await pedir('/login',{usuario,clave});$('clave').value='';ocultarClave();generacion++;pintar(await pedir('/estado'));}
  catch(e){mostrarError(e,'loginError');}
  finally{$('entrar').disabled=false;$('entrar').textContent='Iniciar sesión';$('loginForm').setAttribute('aria-busy','false');}
 };
@@ -280,3 +304,6 @@ $('probar').onclick=()=>{
  manual('/encender');
 };
 consultar();
+
+$('abrirRecuperacion').onclick = () => $('recuperacion').showModal();
+$('cerrarRecuperacion').onclick = () => $('recuperacion').close();

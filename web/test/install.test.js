@@ -14,8 +14,13 @@ function setup({ support = {}, installed = false, ios = false } = {}) {
 }
 test('contacto usa solo un número internacional válido y codifica el mensaje', () => {
   const { elements } = setup({ support: { developer: 'Empresa', whatsapp: '51999999999', message: 'Hola & ayuda' } });
-  assert.equal(elements.developerName.textContent, 'Empresa');
   assert.equal(elements.whatsappSupport.href, 'https://wa.me/51999999999?text=Hola%20%26%20ayuda');
+  assert.match(decodeURIComponent(elements.recoverySupportLink.href), /olvidé mi contraseña/);
+  assert.equal(elements.recoverySupportLink.hidden, false);
+  assert.equal(elements.recoverySupportPending.hidden, true);
+  const missing = setup().elements;
+  assert.equal(missing.recoverySupportLink.hidden, true);
+  assert.equal(missing.recoverySupportPending.hidden, false);
   assert.equal(setup({ support: { whatsapp: 'javascript:alert(1)' } }).elements.whatsappSupport.href, undefined);
 });
 test('iOS muestra ayuda y modo standalone indica app instalada', async () => {

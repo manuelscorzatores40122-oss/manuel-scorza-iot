@@ -1,4 +1,6 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual, scrypt } from 'node:crypto';
+import { promisify } from 'node:util';
+const deriveKey = promisify(scrypt);
 
 export class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -62,10 +64,41 @@ if old then rev=cjson.decode(old).revision end
 if rev~=ARGV[1] then return 0 end
 redis.call('SET',KEYS[1],ARGV[2])
 return 1`;
+const PASSWORD_CAS = `-- compare-and-set credentials
+local old=redis.call('GET',KEYS[1]) or ''
+if old~=ARGV[1] then return 0 end
+redis.call('SET',KEYS[1],ARGV[2])
+return 1`;
 export function createService(db = redis, env = process.env, clock = () => Math.floor(Date.now() / 1000)) {
+  async function limited(name, maximum = 10) {
+    const bucket = key(`${name}:${Math.floor(clock() / 600)}`);
+    const attempts = await db('INCR', bucket);
+    if (attempts === 1) await db('EXPIRE', bucket, 660);
+    if (attempts > maximum) throw new HttpError(429, 'Demasiados intentos. Espera 10 minutos.');
+  }
+  async function checkPassword(password, credentials) {
+    if (typeof password !== 'string' || password.length > 128) return false;
+    if (!credentials) return !!env.ADMIN_PASSWORD && same(password, env.ADMIN_PASSWORD);
+    const hash = await deriveKey(password, credentials.salt, 64);
+    return same(hash.toString('hex'), credentials.hash);
+  }
+  async function replacePassword(body, raw) {
+    if (typeof body.nueva !== 'string' || body.nueva.length < 12 || body.nueva.length > 128 || !body.nueva.trim()) throw new HttpError(400, 'Usa una contraseña de 12 a 128 caracteres.');
+    if (body.nueva !== body.confirmacion) throw new HttpError(400, 'Las contraseñas nuevas no coinciden.');
+    const current = parse(raw);
+    if (await checkPassword(body.nueva, current)) throw new HttpError(400, 'Elige una contraseña distinta a la actual.');
+    const salt = randomBytes(16).toString('hex');
+    const hash = (await deriveKey(body.nueva, salt, 64)).toString('hex');
+    const next = { version: id(), salt, hash };
+    const saved = await db('EVAL', PASSWORD_CAS, 1, key('credentials'), raw || '', JSON.stringify(next));
+    if (!saved) throw new HttpError(409, 'La cuenta cambió durante la operación. Vuelve a iniciar sesión.');
+    return { ok: true };
+  }
   async function session(cookie = '') {
     const token = cookie.split(';').map(x => x.trim()).find(x => x.startsWith('timbre_session='))?.slice(15);
-    if (!token || !/^[a-f0-9]{64}$/.test(token) || !await db('GET', key(`session:${digest(token)}`))) throw new HttpError(401, 'Inicia sesión para continuar');
+    if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new HttpError(401, 'Inicia sesión para continuar');
+    const [version, raw] = await db('MGET', key(`session:${digest(token)}`), key('credentials'));
+    if (!version || version !== (parse(raw)?.version || '1')) throw new HttpError(401, 'Inicia sesión para continuar');
     return token;
   }
   async function state() {
@@ -88,15 +121,20 @@ export function createService(db = redis, env = process.env, clock = () => Math.
   return {
     session, state,
     async login(body, ip) {
-      if (!env.ADMIN_PASSWORD) throw new HttpError(503, 'Falta configurar ADMIN_PASSWORD');
-      const bucket = key(`login:${digest(ip)}:${Math.floor(clock() / 600)}`);
-      const attempts = await db('INCR', bucket);
-      if (attempts === 1) await db('EXPIRE', bucket, 660);
-      if (attempts > 10) throw new HttpError(429, 'Demasiados intentos. Espera 10 minutos.');
-      if (!same(body.usuario || '', env.ADMIN_USER || 'admin') || !same(body.clave || '', env.ADMIN_PASSWORD)) throw new HttpError(401, 'Usuario o contraseña incorrectos');
+      await limited(`login:${digest(ip)}`);
+      const credentials = parse(await db('GET', key('credentials')));
+      if (!credentials && !env.ADMIN_PASSWORD) throw new HttpError(503, 'Falta configurar ADMIN_PASSWORD');
+      if (!same(body.usuario || '', env.ADMIN_USER || 'admin') || !await checkPassword(body.clave, credentials)) throw new HttpError(401, 'Usuario o contraseña incorrectos');
       const token = randomBytes(32).toString('hex');
-      await db('SET', key(`session:${digest(token)}`), '1', 'EX', 43200);
+      await db('SET', key(`session:${digest(token)}`), credentials?.version || '1', 'EX', 43200);
       return token;
+    },
+    async changePassword(body, token) {
+      await limited('password-change');
+      const [raw, version] = await db('MGET', key('credentials'), key(`session:${digest(token)}`));
+      if (!version || version !== (parse(raw)?.version || '1')) throw new HttpError(401, 'Inicia sesión para continuar');
+      if (!await checkPassword(body.actual, parse(raw))) throw new HttpError(400, 'La contraseña actual es incorrecta.');
+      return replacePassword(body, raw);
     },
     async logout(token) { await db('DEL', key(`session:${digest(token)}`)); },
     async program(body) {

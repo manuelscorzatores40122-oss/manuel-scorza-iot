@@ -1,12 +1,24 @@
 (() => {
   const config = window.TIMBRE_SUPPORT || {};
   const contact = document.getElementById('whatsappSupport');
-  if (config.developer?.trim()) document.getElementById('developerName').textContent = config.developer.trim();
   if (/^[1-9]\d{6,14}$/.test(config.whatsapp || '')) {
     contact.href = `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(config.message || '')}`;
     contact.removeAttribute('aria-disabled');
     document.getElementById('supportPending').hidden = true;
   }
+
+  const supportMessage = config.message || 'Hola, necesito ayuda con la app Timbre Escolar Manuel Scorza.';
+  for (const id of ['loginSupportLink', 'recoverySupportLink']) {
+    const link = document.getElementById(id);
+    if (/^[1-9]\d{6,14}$/.test(config.whatsapp || '')) {
+      link.href = `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(id === 'recoverySupportLink' ? 'Hola, olvidé mi contraseña de Timbre Escolar Manuel Scorza. Necesito ayuda para restablecer mi acceso.' : supportMessage)}`;
+      link.hidden = false;
+    } else {
+      link.hidden = true;
+    }
+  }
+
+  document.getElementById('recoverySupportPending').hidden = /^[1-9]\d{6,14}$/.test(config.whatsapp || '');
 
   const button = document.getElementById('instalarApp');
   const quick = document.getElementById('installQuick');

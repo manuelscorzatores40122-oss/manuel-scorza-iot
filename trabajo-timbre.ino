@@ -178,7 +178,12 @@ void guardarConfig() {
 // ===================================
 // CONTROL DEL RELE
 // ===================================
+char ultimaActivacion[17] = "";
+unsigned long ultimaActivacionHora = 0;
+
 void encenderPor(uint16_t segundos) {
+  snprintf(ultimaActivacion, sizeof(ultimaActivacion), "%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
+  ultimaActivacionHora = (unsigned long)time(nullptr);
   duracionActualSeg = segundos;
   digitalWrite(PIN_RELE, RELE_NIVEL_ACTIVO);
   digitalWrite(PIN_LED_AZUL, LED_AZUL_NIVEL_ACTIVO);
@@ -569,9 +574,9 @@ void publicarEstadoNube() {
     ? (duracionMs() - transcurrido + 999) / 1000 : 0;
   CloudSnapshot estado;
   snprintf(estado.body, sizeof(estado.body),
-    "proto=2&hora=%s&activo=%u&dias=%u&duracion=%u&revision=%s&ack=%s&reloj=%s&encendido=%u&restante=%lu&proxima=%lu",
+    "proto=2&hora=%s&activo=%u&dias=%u&duracion=%u&revision=%s&ack=%s&reloj=%s&encendido=%u&restante=%lu&proxima=%lu&evento=%s&eventoHora=%lu",
     hora, cfg.activa, cfg.dias, cfg.duracionSeg, revisionNube, ultimoComando,
-    reloj, releEncendido, (unsigned long)restante, (unsigned long)proximaAlarma(time(nullptr)));
+    reloj, releEncendido, (unsigned long)restante, (unsigned long)proximaAlarma(time(nullptr)), ultimaActivacion, ultimaActivacionHora);
   xQueueOverwrite(colaEstado, &estado);
 }
 

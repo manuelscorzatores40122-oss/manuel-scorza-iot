@@ -175,10 +175,39 @@ Reinicia el servidor de desarrollo después de cambiar las variables.
 La marca de campana en `web/public/assets/timbre-mark.svg` identifica la app;
 no sustituye al escudo oficial de la institución.
 
-### Línea del día
+### Confirmación de activación en la app
 
-La vista de horarios incluye `DayTimeline.jsx`: reloj de Perú, escala de 07:00 a
-18:00, indicador actual y marcas de los timbres activos del día. La escala se
-amplía si hay horarios fuera de ese intervalo. El reloj avanza cada segundo
-partiendo de la hora del servidor; la línea no indica que un timbre ya se ejecutó.
-Las configuraciones pendientes se identifican como pendientes de confirmación.
+La app muestra la hora de activación confirmada por la placa e intenta emitir
+una vibración corta mientras está visible, en dispositivos compatibles y tras
+interactuar con la página. No son notificaciones push con la app cerrada.
+El aviso llega en el siguiente ciclo de sincronización y consulta; no es inmediato.
+El firmware incluye ahora el identificador y la hora de la última activación,
+para poder confirmar timbres que terminaron antes de la siguiente consulta.
+Es necesario cargar este firmware en el ESP32 para esa confirmación de timbres
+cortos. Con firmware anterior solo se detecta el cambio al estado «Sonando».
+Al abrir sesión se establece una referencia sin avisar por eventos anteriores;
+cada evento reciente se anuncia una vez durante la sesión.
+
+### Contraseña de administrador
+
+La aplicación tiene una cuenta administradora (`ADMIN_USER`, por defecto `admin`).
+`ADMIN_PASSWORD` proporciona la contraseña inicial de entrega. La sección
+Dispositivo no incluye opciones para cambiar o recuperar la contraseña.
+El servicio conserva el cambio autenticado de contraseña mediante la API,
+que exige la contraseña actual y una nueva de 12 a 128 caracteres, dos veces.
+La nueva contraseña se almacena en Redis mediante scrypt con sal aleatoria;
+no se almacena en texto plano ni se devuelve en el estado público de la API.
+Desde ese momento la contraseña de Redis tiene prioridad sobre `ADMIN_PASSWORD`.
+No es necesario redesplegar al cambiarla mediante la API.
+
+Cada cambio cierra todas las sesiones. Vuelve a ingresar con la nueva contraseña.
+Los cambios concurrentes se comprueban atómicamente.
+La pantalla de acceso incluye **Olvidé mi contraseña** y ofrece contactar al
+desarrollador por WhatsApp para solicitar el restablecimiento del acceso.
+El número se configura en `web/public/support-config.js`. El usuario revisa y envía
+el mensaje en WhatsApp; abrir el enlace no cambia la contraseña automáticamente.
+No se requieren Gmail ni códigos de recuperación. El responsable del servidor
+atiende la solicitud y verifica la identidad antes de restablecer el acceso.
+Redis sigue siendo necesario para las sesiones, credenciales y horarios.
+No borrar la clave Redis `timbre:v1:credentials`: contiene la contraseña vigente
+y la versión que invalida las sesiones anteriores.
