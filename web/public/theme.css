@@ -277,3 +277,70 @@ main:has(> .login:not([hidden])) {
 #avisoConexionPanel p{margin:0}
 #avisoConexionPanel button{display:block;min-height:44px;margin:14px 0 0 auto;padding:10px 24px;border:1px solid currentColor;color:inherit;border-radius:8px}
 #avisoConexionPanel button:hover{background:#ffffff14}
+
+/* Escritorio: navegación superior y contenido con espacio para leer y operar. */
+@media (min-width: 900px) {
+  main:has(> #app:not([hidden])) {
+    width: 100%;
+    max-width: 1440px;
+    padding: 0 clamp(28px, 4vw, 64px) 56px;
+  }
+  #app > header { min-height: 112px; margin-bottom: 0; gap: 24px; }
+  #app .school-brand { gap: 16px; }
+  #app .school-brand img { width: 48px; height: 56px; }
+  #app .school-brand .brand { font-size: 24px; }
+  #app .institution-label { display: block; margin-bottom: 6px; font-size: 10px; font-weight: 500; letter-spacing: 1.2px; color: var(--muted); }
+  #app .school-brand .brand small { font-size: 10px; }
+  #salir { padding: 10px 16px; font-size: 13px; border: 1px solid #444; border-radius: 8px; }
+  #app > .bottom-nav {
+    position: sticky;
+    top: 0;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    max-width: none;
+    min-height: 80px;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 16px 0;
+    margin-bottom: 28px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  #app .bottom-nav button { display: flex; align-items: center; justify-content: center; gap: 10px; flex: 0 1 220px; padding: 12px 20px; border-radius: 8px; font-size: 14px; }
+  #app .bottom-nav svg { display: block; width: 20px; height: 20px; flex-shrink: 0; }
+  #app .bottom-nav button:hover { background: #242424; color: #fff; }
+  #app .bottom-nav button[aria-current] { background: #f5f5f2; color: #111; }
+  #app .bottom-nav button[aria-current]::before { display: none; }
+  #app .next { padding: 28px 32px; margin-bottom: 28px; border: 1px solid #444; border-radius: 12px; background: #1b1b1b; }
+  #app .next h1 { font-size: clamp(30px, 3vw, 42px); }
+  #app .next .eyebrow { font-size: 11px; }
+  #app .next .muted { font-size: 14px; }
+  #app .schedule { padding: 28px 32px; border: 1px solid var(--line); border-radius: 12px; background: #161616; scroll-margin-top: 100px; }
+  #app .section-head { margin-bottom: 24px; }
+  #app .section-head h2 { font-size: 25px; }
+  #app .section-head .small { font-size: 12px; }
+  #app .schedule .filters { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; padding: 0; }
+  #app .schedule .filters button[data-filtro="-1"] { grid-column: auto; justify-self: stretch; }
+  #app .schedule .filters button { min-height: 44px; padding: 10px 6px; font-size: 13px; }
+  #app #contador { margin: 20px 0 4px; font-size: 13px; }
+  #app .alarm { grid-template-columns: minmax(0, 1fr) auto 44px; gap: 32px; padding: 24px 8px; }
+  #app .time-digits { font-size: 36px; }
+  #app .alarm-caption { font-size: 14px; }
+  #app .week { gap: 6px; }
+  #app .week span { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid transparent; border-radius: 6px; font-size: 12px; }
+  #app .week .selected { background: #292929; border-color: #444; color: #f5f5f2; }
+  #app .alarm.off .week .selected { background: transparent; color: #aaa; }
+  #app .primary, #app .secondary { min-height: 46px; font-size: 14px; padding-inline: 22px; }
+  #app .empty { padding: 48px 24px; }
+  #app .empty p { font-size: 14px; }
+  #app .manual { max-width: 720px; padding: 36px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  #app .manual .small { font-size: 13px; }
+  #panelDispositivo:not([hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: stretch; }
+  #panelDispositivo > * { min-width: 0; padding: 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  #panelDispositivo > .tip { padding: 28px; }
+  #panelDispositivo .muted, #panelDispositivo .small { font-size: 14px; overflow-wrap: anywhere; }
+  #panelDispositivo .tip strong { font-size: 18px; }
+  #panelDispositivo .feature-icon { flex-shrink: 0; }
+  .login-access { padding: 32px; border: 1px solid #ffffff30; border-radius: 16px; background: #101522d9; text-shadow: none; }
+}
