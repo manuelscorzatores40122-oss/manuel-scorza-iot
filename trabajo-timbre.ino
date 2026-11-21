@@ -32,6 +32,12 @@ struct RedWiFi {
   const char* nombre;
   const char* clave;
 };
+// REDES WIFI MANUALES: agrega aquí una línea por cada router que usará el timbre.
+// Formato: {"NOMBRE_EXACTO_DE_LA_RED", "CONTRASEÑA"},
+// Ejemplo para copiar y editar: {"MiWiFi_2.4GHz", "mi-clave-wifi"},
+// Usa una red de 2.4 GHz. El ESP32 prueba estas redes en orden y vuelve a
+// empezar la lista cada 10 segundos hasta conectarse. No borres la coma final
+// de las líneas que agregues, excepto si esa línea queda al final del arreglo.
 const RedWiFi REDES_WIFI[] = {
   {"Ls", "123456789"},
   {"COMPUTO_2.4GHz", "escorcino2025"},
