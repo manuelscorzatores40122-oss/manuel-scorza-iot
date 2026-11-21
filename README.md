@@ -108,7 +108,7 @@ El firmware `v2` recibe la lista completa, la valida y la guarda en una única e
 
 Las ediciones usan revisiones para evitar sobrescribir cambios guardados desde otro navegador. Si aparece un conflicto, cerrar el editor y volver a cargar los horarios antes de guardar. La lista vacía desactiva toda la programación al sincronizar.
 
-La primera conexión importa la configuración local solo si aún no se guardó ninguna en la nube. Después, Vercel es la fuente de la programación: los horarios escolares se administran desde la web remota. El panel local antiguo muestra solo la programación original y el control manual. Al reiniciar sin internet hace falta recuperar NTP para conocer la hora real; no hay reloj RTC con batería.
+La primera conexión importa la configuración local solo si aún no se guardó ninguna en la nube. Después, Vercel es la fuente de la programación: los horarios escolares se administran desde la web remota. Con Vercel configurado, abrir la dirección local de la placa redirige a la interfaz web de producción; la interfaz local antigua sigue disponible en `/local` para control básico. Al reiniciar sin internet hace falta recuperar NTP para conocer la hora real; no hay reloj RTC con batería.
 
 Las órdenes se ejecutan como máximo una vez: se registra su identificador antes de accionar el GPIO. Si hay un corte eléctrico justo entre esos pasos, la orden puede perderse; no se reejecuta automáticamente al arrancar. La pantalla confirma recepción del comando, no verifica físicamente el timbre.
 

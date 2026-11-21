@@ -713,6 +713,17 @@ void setup() {
   // Rutas web
   servidor.on("/", HTTP_GET, []() {
     servidor.sendHeader("Cache-Control", "no-store");
+    // Con Vercel configurado, abre la interfaz actual del sistema en producción.
+    // La interfaz embebida antigua queda disponible explícitamente en /local.
+    if (nubeConfigurada()) {
+      servidor.sendHeader("Location", TIMBRE_CLOUD_URL, true);
+      servidor.send(302, "text/plain; charset=utf-8", "Abriendo la interfaz de Vercel");
+      return;
+    }
+    servidor.send_P(200, "text/html; charset=utf-8", PAGINA);
+  });
+  servidor.on("/local", HTTP_GET, []() {
+    servidor.sendHeader("Cache-Control", "no-store");
     servidor.send_P(200, "text/html; charset=utf-8", PAGINA);
   });
   servidor.on("/login", HTTP_POST, iniciarSesion);
