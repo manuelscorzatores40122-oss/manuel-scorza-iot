@@ -105,7 +105,7 @@ export function createService(db = redis, env = process.env, clock = () => Math.
     const [c, t, cmd] = (await db('MGET', key('config'), key('telemetry'), key('command'))).map(parse);
     const ahora = clock(), online = !!t && ahora - t.seen <= 35;
     const config = c || { horaProgramada: '18:00', programacionActiva: false, dias: 127, duracion: 10 };
-    return { ...config, alarmas: alarmasDe(c), maxAlarmas: MAX_ALARMAS, firmwareVersion: t?.proto || 1, requiereActualizacion: !!t && t.proto !== 2, ahora, online, configurado: !!c,
+    return { ...config, diasSuspendidos: Number(c?.diasSuspendidos) || 0, alarmas: alarmasDe(c), maxAlarmas: MAX_ALARMAS, firmwareVersion: t?.proto || 1, requiereActualizacion: !!t && t.proto !== 2, ahora, online, configurado: !!c,
       encendido: online && !!t.encendido && t.restante > ahora - t.seen,
       restante: online ? Math.max(0, t.restante - (ahora - t.seen)) : 0,
       hora: online ? t.hora : 'Sin conexión',
@@ -148,6 +148,16 @@ export function createService(db = redis, env = process.env, clock = () => Math.
         const next = { ...legacy, alarmas, schema: 2, legacyRevision: current?.legacyRevision || current?.revision || id(), revision: id() };
 
         if (!await db('EVAL', CONFIG_CAS, 1, key('config'), expected, JSON.stringify(next))) throw new HttpError(409, 'Los horarios cambiaron. Recarga antes de guardar.');
+      } else if (body.diasSuspendidos !== undefined) {
+        const diasSuspendidos = Number(body.diasSuspendidos);
+        if (!Number.isInteger(diasSuspendidos) || diasSuspendidos < 0 || diasSuspendidos > 127) throw new HttpError(400, 'Días suspendidos inválidos');
+        const current = parse(await db('GET', key('config')));
+        const expected = current?.revision || '-';
+        if (body.revision !== expected) throw new HttpError(409, 'La programación cambió. Recarga antes de modificar los días.');
+        const base = current || { horaProgramada: '18:00', programacionActiva: false, dias: 62, duracion: 10 };
+        const next = { ...base, alarmas: alarmasDe(current), diasSuspendidos, schema: 2,
+          legacyRevision: current?.legacyRevision || current?.revision || id(), revision: id() };
+        if (!await db('EVAL', CONFIG_CAS, 1, key('config'), expected, JSON.stringify(next))) throw new HttpError(409, 'La programación cambió. Recarga antes de modificar los días.');
       } else {
         const current = parse(await db('GET', key('config')));
         if (current?.alarmas) throw new HttpError(409, 'Actualiza la página para editar los horarios escolares');
@@ -193,7 +203,11 @@ return {redis.call('GET',KEYS[1]),redis.call('GET',KEYS[3])}`;
       const [config, command] = (await db('EVAL', script, 3, key('config'), key('telemetry'), key('command'), JSON.stringify({ ...initial, revision: id() }), JSON.stringify(telemetry))).map(parse);
       const cmd = command && command.expires > clock() && command.id !== body.ack ? command : null;
       if (body.proto === '2') {
-        const alarmas = alarmasDe(config);
+        const diasSuspendidos = (Number(config.diasSuspendidos) || 0) & 0x7F;
+        const alarmas = alarmasDe(config).map(a => {
+          const dias = a.dias & ~diasSuspendidos;
+          return { ...a, dias, activa: a.activa && dias !== 0 };
+        });
         const header = `v2 ${config.revision} ${alarmas.length} ${config.duracion} ${cmd?.id || '-'} ${cmd?.action || 0} ${cmd?.expires || 0}`;
         const rows = alarmas.map(a => {
           const [h, m] = a.hora.split(':').map(Number);

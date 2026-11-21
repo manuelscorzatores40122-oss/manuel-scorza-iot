@@ -6,12 +6,13 @@ import { activationTracker } from './activation.js';
 let nuevaActivacion = activationTracker();
 const $ = id => document.getElementById(id);
 const listaRoot = createRoot($('lista'));
-const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], ORDEN = [1,2,3,4,5,6,0];
+const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], DIAS_COMPLETOS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'], ORDEN = [1,2,3,4,5,6,0];
 let datos = null, autenticado = false, ocupado = false, filtro = -1, editId = null, editBase = null, generacion = 0;
 let avisoGuardado = null;
 const avisosConexionAceptados = new Set();
 let esperaManual = null, timerManual = null;
 $('dias').innerHTML = ORDEN.map(d => `<label class="day"><input type="checkbox" data-dia="${d}" aria-label="${DIAS[d]}" aria-describedby="editorError"><span>${['D','L','M','X','J','V','S'][d]}</span></label>`).join('');
+$('diasGlobales').innerHTML = ORDEN.map(d => `<button type="button" data-dia-global="${d}" aria-pressed="true">${DIAS[d]}</button>`).join('');
 $('filtros').innerHTML = [-1,...ORDEN].map(d => `<button data-filtro="${d}" aria-pressed="${d===-1}">${d===-1?'Todos':DIAS[d]}</button>`).join('');
 function escribirAviso(id, texto, tipo = 'info') {
  const aviso = $(id);
@@ -77,6 +78,20 @@ function renderLista() {
  $('vacio').hidden=!!list.length;$('vacioTitulo').textContent=all.length?'Sin timbres para este día':'Tu jornada empieza aquí';
  $('vacioTexto').textContent=all.length?'Agrega un horario o selecciona otro día de la semana.':'Agrega los timbres de entrada, recreo y salida.';
  document.querySelectorAll('[data-filtro]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.filtro)===filtro)));
+ renderDiasGlobales();
+}
+function renderDiasGlobales() {
+ const suspendidos = Number(datos?.diasSuspendidos) || 0;
+ const diasEnPausa = ORDEN.filter(d => suspendidos & (1 << d));
+ document.querySelectorAll('[data-dia-global]').forEach(b => {
+  const dia = Number(b.dataset.diaGlobal), suspendido = !!(suspendidos & (1 << dia));
+  b.setAttribute('aria-pressed', String(!suspendido));
+  b.disabled = ocupado || !datos;
+  b.title = `${DIAS_COMPLETOS[dia]}: ${suspendido ? 'alarmas suspendidas; toca para reactivar' : 'habilitado; toca para suspender todas sus alarmas'}`;
+ });
+ $('estadoDiasGlobales').textContent = diasEnPausa.length
+  ? `Alarmas suspendidas: ${diasEnPausa.map(d => DIAS[d]).join(', ')}`
+  : 'Todos los días están habilitados.';
 }
 function pintar(d) {
  if (esperaManual && d.ultimoComando === esperaManual) {
@@ -196,6 +211,7 @@ $('nuevo').onclick=()=>editar();$('nuevoVacio').onclick=()=>editar();
 $('cancelar').onclick=$('cerrarEditor').onclick=()=>{if(!ocupado)$('editor').close();};$('editor').addEventListener('cancel',e=>{if(ocupado)e.preventDefault();});
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>seleccionarDias(Number(b.dataset.preset)));
 $('filtros').onclick=e=>{const b=e.target.closest('[data-filtro]');if(b){filtro=Number(b.dataset.filtro);renderLista();}};
+$('diasGlobales').onclick=e=>{const b=e.target.closest('[data-dia-global]');if(b)alternarDiaGlobal(Number(b.dataset.diaGlobal));};
 function mostrarGuardado(d) {
  const pendiente=d.pendiente||!d.online||d.requiereActualizacion;
  const detalle=d.requiereActualizacion?'Actualiza la placa para aplicar los horarios.':!d.online?'El timbre está sin conexión; los cambios se aplicarán al reconectarse.':d.pendiente?'Esperando confirmación de la placa.':'La placa confirmó los cambios.';
@@ -205,6 +221,20 @@ async function guardarLista(list,base,texto='Horario guardado.'){
  ocupado=true;generacion++;avisoGuardado=null;escribirAviso('alerta','');escribirAviso('mensaje','');controles();
  try{const d=await pedir('/programar',{alarmas:JSON.stringify(list),revision:base.revision||'-'});avisoGuardado={revision:d.revision,texto};pintar(d);}
  finally{ocupado=false;controles();}
+}
+async function alternarDiaGlobal(dia) {
+ if (ocupado || !datos || dia < 0 || dia > 6) return;
+ const mascaraActual = Number(datos.diasSuspendidos) || 0;
+ const bit = 1 << dia, suspender = !(mascaraActual & bit);
+ const diasSuspendidos = suspender ? mascaraActual | bit : mascaraActual & ~bit;
+ ocupado = true; generacion++; avisoGuardado = null;
+ escribirAviso('alerta',''); escribirAviso('mensaje',''); controles();
+ try {
+  const d = await pedir('/programar', {diasSuspendidos, revision:datos.revision || '-'});
+  avisoGuardado = {revision:d.revision, texto:`Alarmas del ${DIAS_COMPLETOS[dia]} ${suspender?'suspendidas':'reactivadas'}.`};
+  pintar(d);
+ } catch(e) { mostrarError(e); }
+ finally { ocupado = false; controles(); }
 }
 $('alarmForm').onsubmit=async e=>{
  e.preventDefault();if(ocupado||!editBase)return;limpiarError('alarmForm','editorError');
